@@ -1,0 +1,333 @@
+///////////////////////////////////////////////////////////////////////////////
+version=" ";
+category="Commutative Algebra";
+info=" ";
+
+// for small primes this algorithm is not working 
+proc modpTran(ideal I,ideal cI, int in_value,list #)
+{
+    /* first step list 
+     * I a given ideal
+     * pr list of primes where its size is equal to size of parameters
+     * kr is the bound
+     * n is number of variables
+     */
+    int tmp = size(#);
+    def St=basering;
+    int nx=nvars(St);
+    int nr=nx-1;
+    list ly=ringlist(St);
+    list L,l1,l3,l4,l5,A1,l2;
+    l1=ly[2];
+    l2=l1[1..nr];
+    L[2]=l2;
+    l3=l1[(nr+1)..nx];
+    l5=ly[3];
+    l4=l5[2];
+    A1=ly[1],l3,list(l4),ly[4];
+    L[1]=A1;
+    l5=delete(l5,2);
+    L[3]=l5;
+    L[4]=ly[4];
+    def Gt=ring(L);
+    kill L,l1,l3,l4,l5,A1,l2;
+    setring Gt;
+    setring St;
+    int i,k1,k2;
+    list T,T1,L1,L2,L3,m_l;
+  
+    int r_d = char(basering)-10;
+    list l_1 = ChooseprimeIdealsIAnd_ImodgJ(I,cI, nx,in_value,r_d);
+    list lus = l_1[2];
+    l_1 = l_1[1];
+    m_l[1] = normalize(std(l_1[1]));
+    if(m_l[1][1]==1)
+    {
+        return(list(ideal(1)));
+    }
+    
+    for(i=2;i<=in_value;i++)
+    {
+        m_l[i] = normalize(std(l_1[i]));//parallelizable
+    }
+
+    int ug;
+    for(int cZ =1;cZ<=ncols(m_l[1]);cZ++)
+    {
+        if(size(m_l[1][cZ])>1)
+        {
+            ug = cZ;
+            break;
+        }
+    }
+    if(!ug)
+    {
+        return(list(m_l[1]));
+    }
+    
+    list lev = list_coef_index(m_l,ug,2,in_value);
+    list L = polyInterpolation(lus,lev,nx);
+    int ksz=size(L[3]);
+    poly G1 = L[2];
+    poly G2 = G1*(var(nx)-lus[ksz]);
+    poly DR,NR;
+    list fry = fareypoly(L[1],G2);
+    //fry;
+    //"================ 1 =============";
+    DR = fry[2];
+    NR = fry[1];
+    # = list(NR)+list(DR)+list(nx)+L;
+    int us = lus[size(lus)]-1;
+    list M = m_l;
+    
+    l_1 = ChooseprimeIdealsIAnd_ImodgJ(I,cI,nx,1,us);
+    ideal J = normalize(std(l_1[1][1]));
+    M = M + list(J);
+    list Zr = list_all_monom(J);
+    
+    lus = l_1[2];
+    int n_z,m_x;
+    list tak;
+    list M1,M2,Fr;
+    setring Gt;
+    poly g_t;
+    list Zr = imap(St,Zr);
+    ideal FJ = imap(St,J);
+    setring St;
+    for(k1=ug;k1<=ncols(J);k1++)
+    {
+        n_z = size(J[k1]);
+        setring Gt;
+        g_t = Zr[k1][1];
+        setring St;
+        if(n_z>1)
+        {
+            for(k2=2;k2<=size(J[k1]);k2++)
+            {
+                if(size(#)<2)
+                {
+                    lev = list_coef_index(M,k1,k2,size(lus));
+                }
+                else
+                {
+                    lev = list_coef_index(list(M[size(M)]), k1, k2,1);
+                }
+                
+                T1 = fareyEarlyTermination(I,cI,M,lus,lev, in_value, k1, k2,#);
+                if(m_x < T1[4]){ m_x = T1[4]; tak = T1[2];} // max number of std for the first time
+                L1[k2-1] = T1[3];
+                Fr = T1[5];
+                setring Gt;
+                list Fr = imap(St,Fr);
+                g_t = g_t + (Fr[1]/Fr[2])*Zr[k1][k2];
+                kill Fr;
+                setring St;
+                M = T1[1];
+                lus = T1[2];
+                # = nx;
+            }
+            L2[k1] = L1;
+            L1 = list();
+        }
+        setring Gt;
+        g_t = cleardenom(g_t);
+        FJ[k1]= g_t;
+        setring St;
+    }
+    ideal FJ = imap(Gt,FJ);
+    FJ = normalize(FJ);
+    if(tmp > 0)
+    {
+       return(list(FJ, Zr, m_x));
+    }
+
+    return(list(FJ,m_x));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc ChooseprimeIdealsIAnd_ImodgJ(ideal gJ, ideal I,int n1,int nt,int i_s)
+{
+    /*
+     * gJ is given ideal
+     * f is linear with leadcoef 1
+     * I is an output from testlist
+     * n=nvars(basering);
+     * nt number of prime ideals
+     */
+    int j,ss,si;
+    list m,n;
+    poly f;
+    poly g=1;
+    while(1)
+    {
+        ss++;
+        if(i_s==0)
+        {
+            ERROR("No more points to choose");
+        }
+        f=var(n1)-i_s;
+        if(test_fmodI(f,I)==1)
+        {
+            j=j+1;
+            n=n+list(subst(gJ,var(n1),i_s));
+            m[j]=i_s;
+        }
+        i_s=i_s-1;
+        if(j==nt)
+        {
+            n=n,m;
+            return(n);
+            break;
+        }
+    }
+}
+
+static proc fareyEarlyTermination(ideal I, ideal cI, list M,list lus, list lev, int in_value, int k1, int k2,list #)
+{
+    // early termination for farey rational funtion map for polynomials
+    //list lus distinct values vs evaluation points lev
+    
+    ideal Id;
+    list Tr,fr,L,l_1,m_l,lv,ls;
+    int ksz,us,i;
+    number ev;
+    poly G1,G2,DR,NR;
+    ls = lus;
+    int nx;
+    if(size(#)==1)
+    {
+        nx = #[1];
+        L = polyInterpolation(list(lus[1..size(lus)-1]),list(lev[1..size(lev)-1]),#);
+        # = list(nx)+L;
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(nx)-L[3][ksz]);
+        fr = fareypoly(L[1],G2);
+        //fr;
+        //"================ 4 =============";
+        NR = fr[1];
+        DR = fr[2];
+        L = polyInterpolation(lus[size(lus)],lev[size(lev)],#);
+        # = list(nx)+L;
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(nx)-L[3][ksz]);
+        fr = fareypoly(L[1],G2);
+        //fr;
+        //"================ 5 =============";
+        if(fr[1]==NR and fr[2]==DR)
+        {
+            return(list(M,lus,list(G1,ksz-1),ksz-1,fr));
+        }
+        while(1)
+        {
+            NR = fr[1];
+            DR = fr[2];
+            ls = L[3];
+            us = ls[ksz]-1;
+            l_1 = ChooseprimeIdealsIAnd_ImodgJ(I,cI,nx,in_value,us);
+            ls = l_1[2];
+            l_1 = l_1[1];
+            for(i=1;i<=in_value;i++)
+            {
+                m_l[i] = normalize(std(l_1[i]));//parallelizable
+            }
+            
+            lv = list_coef_index(m_l,k1,k2,in_value);
+            M = M + m_l;
+            # = list(nx)+L;
+            L = polyInterpolation(list(ls[1..in_value-1]),list(lv[1..in_value-1]),#);
+            # = list(nx)+L;
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(nx)-L[3][ksz]);
+            fr = fareypoly(L[1],G2);
+            //fr;
+            //"================ 6 =============";
+            NR = fr[1];
+            DR = fr[2];
+            L = polyInterpolation(ls[in_value],lv[in_value],#);
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(nx)-L[3][ksz]);
+            fr = fareypoly(L[1],G2);
+            if(fr[1]==NR and fr[2]==DR)
+            {
+                return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+            }
+        }
+    }
+    else
+    {
+        nx = #[3];
+        NR = #[1];
+        DR = #[2];
+        # = #[3..size(#)];
+        L = polyInterpolation(lus,lev,#);
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(nx)-L[3][ksz]);
+        fr = fareypoly(L[1],G2);
+        //fr;
+        //"================ 2 =============";
+        if(fr[1]==NR and fr[2]==DR)
+        {
+            return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+        }
+        while(1)
+        {
+            NR = fr[1];
+            DR = fr[2];
+            ls = L[3];
+            us = ls[ksz]-1;
+            l_1 = ChooseprimeIdealsIAnd_ImodgJ(I,cI,nx,in_value,us);
+            ls = l_1[2];
+            l_1 = l_1[1];
+            
+            for(i=1;i<=in_value;i++)
+            {
+                m_l[i] = normalize(std(l_1[i]));//parallelizable
+            }
+            
+            lv = list_coef_index(m_l,k1,k2,in_value);
+            M = M + m_l;
+            # = list(nx)+L;
+            L=polyInterpolation(list(ls[1..in_value-1]),list(lv[1..in_value-1]),#);
+            # = list(nx)+L;
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(nx)-L[3][ksz]);
+            fr = fareypoly(L[1],G2);
+            //fr;
+            //"================ 3 =============";
+            NR = fr[1];
+            DR = fr[2];
+            L = polyInterpolation(ls[in_value],lv[in_value],#);
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(nx)-L[3][ksz]);
+            fr = fareypoly(L[1],G2);
+            if(fr[1]==NR and fr[2]==DR)
+            {
+                return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+                break;
+            }
+        }
+    }
+}
+
+static proc test_fmodI(poly f,ideal I)
+{
+    // test whether f in I or not
+    attrib(f,"isSB",1);
+    for(int i=1;i<=ncols(I);i++)
+    {
+        if(size(reduce(I,f))!=ncols(I))
+        {
+            return(0);
+        }
+    }
+    return(1);
+}
+

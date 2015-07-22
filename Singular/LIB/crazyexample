@@ -1,0 +1,216 @@
+//LIB"/media/TOSHIBA EXT/THESIS/MyCode/transtd.lib";
+LIB "crazymod.lib";
+system("--ticks-per-sec",1000);
+//<"/media/TOSHIBA EXT/THESIS/MyCode/tranexample";
+int t=timer;
+ring R1=(0,a),(x,y,z),dp;
+// sparse examples
+ideal I1 =  [3*x^3*z + (-a + 8)*x^2*y^2 + x^2*y*z + 5*x*y^3,
+ 2*a*x^5 + 4*y^3*z^2 + (a + 26)*y^2*z^3 + 10*y*z^4,
+ 8*x^3 + x*z^2 + 12*y^3 + 3,
+ 7*a*x^2*y^4 + y^3*z^3 + 18*y^3*z^2];
+ 
+ideal I2 = [(a+2)*x*y^4*z^2+x^3*y^2*z-x^2*y^3*z+2*a*x*y*z^2 +
+ 7*y^3+7*a+1, (a-2)*x^2*y^4*z+x^2*y*z^2-x*y^2*z^2 +
+ 2*x^2*y*z-12*x+(a+12)*y,2*y^5*z+(a+5)*x^2*y^2*z-a*x*y^3*z-
+ x*y^3+y^4+2*a*y^2*z,3*x*y^4*z^3+a*x^2*y^2*z-
+ x*y^3*z+(4-a)*y^3*z^2+3*x*y*z^3+4*z^2-x+a*y];
+ 
+ ideal I3 = [(a^3 + 1)*x^3*y^2*z - x^2*y^3*z + 2*a*x*y*z^2 + 7*y^3,
+ x^2*y^4*z + (a-7)*x^2*y*z^2 - x*y^2*z^2 + 2*x^2*y*z - 
+ 12*x + (a + 1)*y, (a - 2)*y^5*z + (a + 5)*x^2*y^2*z - 
+ a*x*y^3*z - x*y^3 + y^4 + 2*a*y^2*z,
+ a*x*y^4*z^3 + a*x^2*y^2*z - x*y^3*z + 3*x*y*z^3 + 
+ (-a + 4)*y^3*z^2 + 4*z^2 - x];
+
+ideal I4 = [x^2*y^3*z + 2*a*x*y*z^2 + 7*y^3,
+ x^2*y^4*z + (a - 7)*x^2*y*z^2 - x*y^2*z^2 + 2*x^2*y*z 
+ - 12*x + y, (a - 2)*y^5*z + (a + 5)*x^2*y^2*z - a*x*y^3*z 
+ - x*y^3 + y^4 + 2*a*y^2*z, a*x^2*y^2*z - x*y^3*z + 
+ 3*x*y*z^3 + (-a + 4)*y^3*z^2 + 4*z^2 - x];
+ 
+ ideal I5 = [(a^2 + 2)*x^2*y + a*y*z^2, x*z^2 + (a + 1)*x^2 - a*y^2];
+ ring R2=(0,a),(x,y,z,w),dp;
+ ideal I6 = [(a+3)*x^2*z+y^2*w+xw + zy, x^2+11*x*z+(a)*z^2+y*w, 
+             y*z+(-a)*x*w+7*w,x*y*w+ay+2*w, x2yzw +aw2, x2 + y2+ w3];
+             
+ ideal I6a = [x2z+1/(a3+3a2)*y2w-x2+1/(a3+3a2)*yz+
+              1/(a2+3a)*xw+2/(a2+3a)*yw-1/(a3+3a2)*y+1/(a2+3a)*z+
+              1/(a+3)*w-1/(a2+3a),x2+11*xz+(a)*z2+1/(a)*yw-11*x+(-2a)*z+w+(a),
+              yz+(-a2)*xw-y+(a)*z+7*w+(-a),
+              xyw+(a)*xw+1/(a)*y+2/(a)*w+1,
+              x2yzw-x2yw+(a)*x2zw+(-a)*x2w+1/(a)*w2,
+              w3+1/(a)*x2+1/(a3)*y2+2/(a2)*y+1/(a)
+              ];
+ ring rr = (0,a),(v,w,x,y,z),dp;
+ 
+ ideal I13 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + v2, (a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2, w3-az3-av3-x3 +xyz,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+ ideal I14 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + v2, (a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+      
+    ideal I15  = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz,
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2,(a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+      
+  ideal I16 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3+xyz,
+    (a2+a)*wz +xy, y3-ax2, vz+awx+vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z+(a-5)*w-7v+wy+(a+1)*xz+(a+3)*v2,
+      ((a2-2a)*x2+v2)*(ay2+(a2+a)*wz+xy)];
+      
+    // homo 76 seconds but std 21 seconds really dense
+    ideal I17 = [ (a+3)*v2+(a+1)*xz, w3+(-a)*z3,
+    (a)*wx+vy+vz, (a+4)*v2+(a-5)*wx-7*vy+wy+(a-2)*y2+(2a+1)*xz+(a+7)*z2,
+    v2xy+(a2-2a)*x3y+(a)*v2y2+(a3-2a2)*x2y2+(a2+a)*v2wz+(a4-a3-2a2)*wx2z];
+ 
+ ring R3=(0,a,b),(x,y,z),dp;
+ ideal I7 = [(8+a)*x^2*y^2+5*x*y^3+(3*a-b)*x^3*z+x^2*y*z,
+ (a/(b-5))*x^5+2*y^3*z^2+13*y^2*z^3+5*y*z^4,
+ (8/a)*x^3+12*y^3+(a^2-2*b)*x*z^2+3,
+ 7*x^2*y^4+(18-b)*y^3*z^2+y^3*z^3];
+ 
+ ideal I8 = [x^2*y^3*z + 2*a*x*y*z^2 + 7*y^3,
+ x^2*y^4*z + (a - 7b)*x^2*y*z^2 - x*y^2*z^2 + 2*x^2*y*z
+ - 12*x + by, (a2 +b- 2)*y^5*z + (a + 5b)*x^2*y^2*z - b*x*y^3*z 
+ - x*y^3 + y^4 + 2*a2*y^2*z, a*x^2*y^2*z - x*y^3*z + 
+ 3a*x*y*z^3 + (-a + 4)*y^3*z^2 + 4*z^2 - bx];
+ 
+ ring R4=(0,a,b),(x,y,z,w),dp;
+ 
+ ideal I9 = [x^2+11b*x*z+(a)*z^2+y*w, bx*z+(-a)*x*w+7*w,y2z-awz + w2,
+             w2 + by+ w, x2z4 + 2ayw4 -xyzw];
+ ring R5=(0,a,b,c),(x,y,z),dp;
+ 
+ideal I10 = [x^2*y^3*z + (2*a + b^2)*x*y*z^2 + 7*y^3,
+ (a - c)*x^2*y^4*z + (a^2 + b*c - 7)*x^2*y*z^2 - x*y^2*z^2 
+ + 2*x^2*y*z - 12*x + b*y + 2*c,(a*b + c - 2)*y^5*z + 
+ (a + 5)*x^2*y^2*z + (-a - b)*x*y^3*z-c*x*y^3 + y^4 + 2*a*b*c*y^2*z,
+ a*c*x^2*y^2*z - x*y^3*z + 3*x*y*z^3 + (-a*b + 4)*y^3*z^2 + 
+ 4*c*z^2 - x + b];
+ 
+ ring R6=(0,u1,u2,u3,u4),(x1,x2,x3,x4,x5,x6,x7),dp;
+ ideal I12 = [-x4*u3+x5*u2,
+ x1*u3+2*x2*u1-2*x2*u2-2*x3*u3-u1*u4+u2*u4,
+-2*x1*x5+4*x4*x6+4*x5*x7+x1*u3-2*x4*u1-2*x4*u4
+-2*x6*u2-2*x7*u3+u1*u2+u2*u4,
+-x1*x5+x1*x7-x4*u1+x4*u2-x4*u4+x5*u3+x6*u1-x6*u2+x6*u4-x7*u3,
+-x1*x4+x1*u1-x5*u1+x5*u4,
+-2*x1*x3+x1*u3-2*x2*u4+u1*u4+u2*u4,
+x1^2*u3+x1*u1*u2-x1*u2^2-x1*u3^2-u1*u3*u4+u3*u4^2];
+
+ring rR =(0,a,b),(x,y),dp;
+ideal I = (b-1)*x2y + (ab-b2)*y, ay2-(b-1)*(a-2)*x;
+ 
+ /*
+ 
+   Hard examples 
+   
+   ring rr = (0,a),(x,y,z,w),dp;
+   ideal I = [(a3)*x2y3z+(2a4)*xyz2w2+(7a6)*y3w3+(-2a4)*xy3z+(12a3)*xyz2w+
+   (63a5)*y3w2+(-2a5)*yz2w2+(a5)*y3z+(18a2)*xyz2+(189a4)*y3w+(-12a4)*yz2w+
+   (189a3)*y3+(-18a3)*yz2, (a4)*y4z+(2a2)*x2yzw+(-a)*xz3w+(a4-7a3)*yz2w2+
+   (-12a4)*xw4+(a5)*yw4+(6a)*x2yz-3*xz3+(-4a3)*xyzw+(6a3-42a2)*yz2w+
+   (a2)*z3w+(-144a3)*xw3+(12a4)*yw3+(12a5)*w4+(-12a2)*xyz+(9a2-63a)*yz2+
+   (3a)*z3+(2a4)*yzw+(-648a2)*xw2+(54a3)*yw2+(144a4)*w3+(6a3)*yz+(-1296a)*xw+
+   (108a2)*yw+(648a3)*w2-972*x+(81a)*y+(1296a2)*w+(972a), (-a3)*xy3+(a4)*y3+(2a3+a2)*y2+(-a)*xz+
+   (a2-2a)*yz+(a2+5a)*zw+(a2+3a+15)*z, (a3)*x2y2+(4a)*xyz2+3*xz3+(-a3+4a2)*yz2w+
+   (-a2)*xzw2+(-a3)*xw3+(-2a4)*xy2+(-7a2+12a)*yz2+(-3a)*z3+(-6a)*xzw+
+   (-9a2)*xw2+(a3)*zw2+(a4)*w3+(a5)*y2-9*xz+(-27a)*xw+(6a2)*zw+(9a3)*w2-27*x+
+   (9a)*z+(27a2)*w+(27a)];
+   
+   ideal J = [ x2y3z+(2a)*xyz2w2+7*y3w3, y4z+(a-7)*yz2w2-xz3w+2*x2yzw-12*xw4+yw4,
+    (a-2)*yz+(a+5)*wz+(-a)*xz-xy3+y2+(2a)*y2, (a)*x2y2-xzw2+(-a+4)*yz2w+3*xz3+
+    4*z2yx-xw3];
+    
+    ideal J2 = [ y2z+(2a)*xw2+7*w3, yz+(a-7)*zw-xw+2*xy,
+    (a-2)*yw2+(a+5)*wzy+(-a)*xzy+(2a)*y2w];
+    
+    ring rR = (0,a),(v,w,x,y,z),dp;
+    //take this
+    ideal J1 = [(a)*v+w+x+y, (a)*vw+wx+xy+(a2-2a)*v2+(a)*xz+(a-2)*y2, (a)*vwx+wxy+
+    (a2-2a)*v2w+(a)*wxz+(a2-2a)*v2y+(a-2)*xy2+(a3-2a2)*vz2+(a2-2a)*x2z, (a)*vwxy+
+    (2a2-2a)*vw2x+(a2-2a)*vwyz+(a2-2a)*v2xy+(a-2)*wxy2+(a3-2a2)*vw2z+(a3-2a2)*vxz2+
+    (a2-2a)*wxz2, (a2-2a)*vwxy+(a3-2a2)*vwxz +z4];
+    
+    ideal J3 = [(a)*v+z+y, (a2-2a)*x2+(a)*xz+(a-2)*y2, (a)*vx+
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2];
+    
+    ideal J4 = [(a)*w+z+y, (a)*xz+(a-2)*y2 +v2, (a+7)*z + w- 7v + x,
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, v + aw + z, (a2-2a)*x2 + z2, axy + vz +aw2, ay2 + wz +xy];
+    
+    ideal J4 = [(a+7)*z + w- 7v + x,
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, v + aw + z, (a2-2a)*x2 + z2, axy + vz +aw2];
+    
+    J4 = [(a)*xz+(a-2)*y2 +v2, (a+7)*z + w- 7v + x, awy + (a+1)*xz + (a+3)*v2, w3-az3, av3-x3, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + z2 +2avw,  ay2 + (a2+a)*wz +xy, y3-ax2, xvy + axwz];
+    
+    // take this No difference
+    J4 = [(a)*xz+(a-2)*y2 +v2, (a+7)*z + w- 7v, awy + (a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + v2,  ay2 + (a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2, w3-az3-av3-x3 +xyz,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy), ((a+3)*v2+(a)*wy+(a+1)*xz)*(xy+(a)*y2+(a2+a)*wz)];
+    
+    // take this too < 2 sec but std > 13 seconds
+    J4 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + v2, (a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2, w3-az3-av3-x3 +xyz,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+    // take this < 2 sec but std > 33 seconds
+    J4 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz, 
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2, (a2-2a)*x2 + v2, (a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+      
+    // vgood take  < 2sec but std > 60 seconds
+    J4 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3 +xyz,
+    (a2-2a)*yw+(a2-2a)*z2+(a-2)*w2,(a2+a)*wz +xy, y3-ax2, vz + awx + vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z + (a-5)*w- 7v+wy + (a+1)*xz + (a+3)*v2,
+      ((a2-2a)*x2 + v2)*(ay2 + (a2+a)*wz +xy)];
+    // 3 seconds but std < 1sec
+    
+    K = [(a+3)*v2+(a+1)*xz,w3+(-a)*z3 , (a)*v3-x3+xyz, (a-2)*w2+(a2-2a)*wy+(a2-2a)*z2,
+     xy+(a2+a)*wz,(-a)*vx2+y3, (a)*wx+vy+vz,(a+4)*v2-7*vx+(a-4)*wy+(a-2)*y2+(a+7)*wz+(2a+1)*xz,
+     v2xy+(a2-2a)*x3y+(a)*v2y2+(a3-2a2)*x2y2+(a2+a)*v2wz+(a4-a3-2a2)*wx2z];
+    
+    // best time you won dere 107 seconds but std 2080 seconds  dense
+    
+    J4 = [(a+1)*xz + (a+3)*v2, w3-az3, av3-x3+xyz,
+    (a2+a)*wz +xy, y3-ax2, vz+awx+vy,
+     (a)*xz+(a-2)*y2 +v2+(a+7)*z+(a-5)*w-7v+wy+(a+1)*xz+(a+3)*v2,
+      ((a2-2a)*x2+v2)*(ay2+(a2+a)*wz+xy)];
+      
+      
+   // homogeniousideal no difference  sparse
+   
+   K = [ (a+3)*v2+(a+1)*xz, w3+(-a)*z3, (a)*v3-x3+xyz, xy+(a2+a)*wz, v3+(-a)*x2y+y3,
+    (a)*wx+vy+vz, (a+4)*v2+(a-5)*wx-7*vy+wy+(a-2)*y2+(2a+1)*xz+(a+7)*z2,
+    v2xy+(a2-2a)*x3y+(a)*v2y2+(a3-2a2)*x2y2+(a2+a)*v2wz+(a4-a3-2a2)*wx2z];
+    
+    // homo 76 seconds but std 21 seconds really dense
+    K = [ (a+3)*v2+(a+1)*xz, w3+(-a)*z3,
+    (a)*wx+vy+vz, (a+4)*v2+(a-5)*wx-7*vy+wy+(a-2)*y2+(2a+1)*xz+(a+7)*z2,
+    v2xy+(a2-2a)*x3y+(a)*v2y2+(a3-2a2)*x2y2+(a2+a)*v2wz+(a4-a3-2a2)*wx2z];
+   
+    ================ farey example ===============
+    
+    Although deg ri + deg ti + deg qi = deg f
+    
+    gcd(ri, ti)=1 Does ri/ti is a solution?
+    
+    I think omiting gcd condition would be a good idea.
+    
+    ring r=2*29-3,a,dp;
+    poly g = 141753191a11+114418574a10-236656172a9-19690290a8-60992141a7-113099499a6-
+             144141703a5+104763613a4-153786912a3+207463204a2+207756930a+265383953;
+    poly f = a12+86a11+3301a10+74586a9+1101543a8+11161938a7+79226783a6-142061671a5-
+             248540131a4-73884678a3-254788965a2-46625387a+171662342;
+    
+    With gcd condition the algorithm "fareypoly" has infinite loop while computing 
+    std for the ideal J2 gievn above.
+    
+*/

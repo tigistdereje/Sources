@@ -1,0 +1,936 @@
+////////////////////////////////////////////////////////////////////////////////
+version=" ";
+category="Commutative Algebra";
+info=" ";
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc modLift(ideal J, poly f)
+{
+    /*
+     * compute std for each factor and combine this result
+     * to modulo minpoly via CRT for poly over char p>0
+     */
+    def Ls = basering;
+    def sl;
+    int in,j;
+    list LL,Lk,T2;
+    
+    ideal K,II;
+    K=factorize(imap(Ls,f),1);
+    in=ncols(K);
+    
+    list l = ringlist(Ls);
+    l[1] = list(l[1]) + list(list(l[2][size(l[2])])) + 
+           list(list(l[3][size(l[3])-1])) + list(ideal(0));
+    l[2] = delete(l[2],size(l[2]));
+    l[3] = delete(l[3],size(l[3])-1);
+    
+    def S1 = ring(l);
+    setring S1;
+    
+    number Num= number(imap(Ls,f));
+    list l = ringlist(S1);
+    l[1][4][1] = Num;
+    S1 = ring(l);
+    setring S1;
+    ideal K = imap(Ls,K);
+    def S2;
+    ideal II;
+    number Num;
+    /* ++++++ if minpoly is irreducible then K = ideal(0) +++ */
+    list LT,Lt,kL,Ym;
+    if(size(K)==0)
+    {
+        matrix T;
+        ideal M;
+        M = liftstd(imap(Ls,J),T);
+        II = normalize(M);
+        Ym = II, T;
+    }
+    else
+    {
+        for(j=1;j<=in;j++)
+        {
+            LL[j]=K[j];
+            Num = number(K[j]);
+            T2 = ringlist(S1);
+            T2[1][4][1] = Num;
+            S2 = ring(T2);
+            setring S2;
+            matrix T;
+            ideal M = liftstd(imap(Ls,J),T);
+            list P(j) = normalize(M), T;
+            kill M,T;
+            setring S1;
+            Lt = imap(S2,P(j));
+            Lk[j] = Lt[1];
+            kL[j] = module(Lt[2]);
+        }
+        if(check_leadmonom_and_size(Lk))
+        {
+            // apply CRT for polynomials
+            setring Ls;
+            II =chinrempoly(imap(S1,Lk),imap(S1,LL));
+            module M = chinrempoly(imap(S1,kL),imap(S1,LL));
+            list Ys = II,M;
+            setring S1;
+            list Ys = imap(Ls,Ys);
+            II = Ys[1];  
+            module N = Ys[2];
+            Ym = II,N;
+        }
+        else
+        {
+            setring S1;
+            II=0;
+            Ym = II;
+        }
+    }
+    setring Ls;
+    return(imap(S1,Ym));
+}
+
+proc nfmod_StdHensel(def I, list #)
+{
+    intvec opt = option(get);
+    option(redSB);
+    
+    //list L=#;
+    def Rbs=basering;
+    poly f;
+    ideal dP;
+    int tmp=1;
+    if(typeof(I)!="ideal")
+    {
+        tmp =0;
+    }
+    int n=nvars(Rbs);
+    if(size(I)==0)
+    {
+        if(!tmp)
+        {
+            return(module([0]));
+        }
+        return(ideal(0));
+    }
+    if(npars(Rbs)==0)
+    {
+        if(!tmp)
+        {
+            ERROE("not implemented");
+        }
+        def J=modStd(I,#);//if algebraic number is in Q
+        if(size(#)>0)
+        {
+            return(cleardenomIdeal(J));
+        }
+        return(J);
+    }
+    def R;
+    list rl=ringlist(Rbs);
+    f=rl[1][4][1];
+    if(tmp)
+    {
+        rl[2][n+1]=rl[1][2][1];
+        rl[1]=rl[1][1];
+        rl[3][size(rl[3])+1]=rl[3][size(rl[3])];
+        rl[3][size(rl[3])-1]=list("dp",1);
+        R=ring(rl);
+    }
+    else
+    {
+        rl[2] = rl[2] + rl[1][2];
+        rl[3][size(rl[3])+1] = rl[1][3][1];
+        rl[1] = rl[1][1];
+        R = ring(rl);
+    }
+    setring R;
+    poly f=imap(Rbs,f);
+    def I=imap(Rbs,I);
+    I = simplify(I,2);// eraze the zero generatos
+    if(f==0)
+    {
+        ERROR("minpoly must be non-zero");
+    }
+    
+    ideal dI = I,f;
+    
+    int i,j;
+    int q = 536870909;
+    
+    bigint p = q;
+    if(size(#)!=0)
+    {
+        q=#[1];
+    }
+    p=q;
+    int q1,q2;
+    (q1,q2) = (q div 2, q);
+    while(!PrimeTestTask(q,list(dI)))
+    {
+        q = prime(random(q1, q2));
+    }
+    if(q<2)
+    {
+        ERROR("no more primes");
+    }
+    p=q;
+    module F,pG,pZ,Z2;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    list rl = ringlist(R);
+    rl[1] = q;
+    def S = ring(rl);
+    setring S;
+    
+    module Z,M,Z2;
+    ideal I = imap(R,dI);
+    poly f = I[ncols(I)];
+    I = I[1..ncols(I)-1];
+    ideal Gp,G1,G2,G3;
+    // return GB of I and transformation matrix T
+    list Ym = modLift(I,f);
+    if(size(Ym[1])==0)
+    {
+        // either prime q is unlucky or not admissible w.r.t. I+<f>
+        setring Rbs;
+        return(nfmodStdHensel(I,prime(q-1)));
+    }
+    Gp = Ym[1];
+    Z = Ym[2];
+    attrib(Gp,"isSB",1);
+    
+    setring Rbs;
+    list bf =ringlist(Rbs);
+    bf[1][1]=q;
+    ring Rb = ring(bf);
+    setring Rb;
+    
+    module F,pG,pZ,Z2,M,Z;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    Gp = imap(S,Gp);
+    Z = imap(S,Z);
+    
+    setring Rbs;
+    module F,pG,pZ,Z2;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    F = I;
+    pG = imap(S,Gp);
+    pZ = imap(S,Z);
+    //~;
+    setring R;
+    Gp = imap(S,Gp);
+    tG = farey(Gp,p);
+    if(size(tG)==1 and tG[1]==1)
+    {
+        setring Rbs;
+        return(ideal(1));
+    }
+    system("--ticks-per-sec",1000);
+    int tr=timer;
+    list Ln;
+    bigint bN = p;
+    while(1)
+    {
+        i++;
+        i;
+        " =============== i ====================";
+        setring Rbs;
+        tr = timer;
+        //F*pZ-pG;
+        G1 = ideal(1/bN * sum_list(F*pZ,(-1)*pG));// expensive part is F*pZ
+        timer-tr;
+        " =============== timer 1 ====================";
+        setring Rb;
+        //imap(Rbs,F)*imap(Rbs,pZ)- Gp;
+
+        tr =timer;
+        G1 = imap(Rbs,G1);
+        Ln = division(G1,Gp);
+        G2 = Ln[2];
+        M  = Ln[1];
+        timer-tr;
+        "==================== division ===============";
+        //Ln[3];
+        //attrib(Gp,"isSB",1);
+        //G2 = reduce(G1,Gp);
+        //G3 = sum_list(G1,(-1)*G2);
+        //timer-tr;
+        //" =============== timer 2 ====================";
+        //tr=timer;
+        //M = lift(Gp,G3);
+        //timer-tr;
+        //" =============== timer 3 ====================";
+        tr = timer;
+        Z2 = (-1)*Z*M;// the most expensive part 
+        timer-tr;
+        " =============== timer 4 ====================";
+        setring Rbs;
+        tr = timer;
+        G2 = imap(Rb,G2);
+        Z2 = imap(Rb,Z2);
+        pG = sum_list(pG, module(bN*G2));
+        pZ = sum_list(pZ, bN*Z2);
+        timer-tr;
+        " =============== timer 5 ====================";
+        setring R;
+        tr = timer;
+        bN = bN*p;
+        tG1 = farey(ideal(imap(Rbs,pG)),bN);
+        timer-tr;
+        " =============== timer 6 ====================";
+        attrib(tG,"isSB",1);
+        "+++++++++ reduce redult ++++++++++";
+        //size(reduce(tG1,tG)) == 0;
+        if(size(reduce(tG1,tG)) == 0)
+        {
+            // preTest
+            if(preTest(dI,tG1,prime(q-1)))
+            {
+                /* ======== final test ============*/
+                // I is in tG1
+                setring Rbs;
+                tG1 = imap(R,tG1);
+                attrib(tG1,"isSB",1);
+                if(size(reduce(I,tG1)) == 0)
+                {
+                    G3 = std(tG1);// tG1 is SB
+                    if(size(reduce(G3,tG1)) == 0)
+                    {
+                        option(set, opt);
+                        return(tG1);
+                    }
+                }
+                
+            }
+        }
+        tG = tG1;
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+ 
+ proc preTest(def args, def result, int p)
+ {
+     /*
+      * let G be std of I which is not yet known whether it is the correct
+      *  standard basis. So this procedure does the first test
+      */
+     def br = basering;
+     list lbr = ringlist(br);
+     int p1,p2;
+     p2 = p;
+     p1 = p div 2;
+     if(p<2)
+     {
+         ERROR("no more primes");
+     }
+     while(!PrimeTestTask(p,list(args)))
+     {
+         p = prime(random(p1, p2));
+     }
+     if (typeof(lbr[1]) == "int")
+     {
+         lbr[1] = p;
+     }
+     else
+     {
+         lbr[1][1] = p;
+     }
+     def Ls = ring(lbr);
+     setring Ls;
+     def Ip = imap(br, args);
+     
+     int u,in,i,j;
+     list LL,Lk,T2;
+     
+     def sl;
+     
+     ideal K,J;
+     poly f;
+     u=ncols(Ip);
+     J=Ip[1..u-1];
+     f=Ip[u];
+     K=factorize(f,1);
+     in=ncols(K);
+     
+     
+     list l = ringlist(Ls);
+     l[1] = list(l[1]) + list(list(l[2][size(l[2])])) + 
+            list(list(l[3][size(l[3])-1])) + list(ideal(0));
+     l[2] = delete(l[2],size(l[2]));
+     l[3] = delete(l[3],size(l[3])-1);
+     
+     def S1 = ring(l);
+     setring S1;
+     
+     number Num= number(imap(Ls,f));
+     list l = ringlist(S1);
+     l[1][4][1] = Num;
+     S1 = ring(l);
+     setring S1;
+     ideal K = imap(Ls,K);
+     def Jp = imap(Ls,J);
+     def S2;
+     ideal Ip;
+     number Num;
+     /* ++++++ if minpoly is irreducible then K = ideal(0) +++ */
+     if(size(K)==0)
+     {
+         Ip = normalize(std(imap(Ls,J)));
+     }
+     else
+     {
+         for(j=1;j<=in;j++)
+         {
+             LL[j]=K[j];
+             Num = number(K[j]);
+             T2 = ringlist(S1);
+             T2[1][4][1] = Num;
+             S2 = ring(T2);
+             setring S2;
+             ideal M = normalize(std(imap(Ls,J)));
+             setring S1;
+             Lk[j] = imap(S2,M);
+         }
+         if(check_leadmonom_and_size(Lk))
+         {
+             // apply CRT for polynomials
+             setring Ls;
+             Ip =chinrempoly(imap(S1,Lk),imap(S1,LL));
+             setring S1;
+             Ip = imap(Ls,Ip);
+             Ip = normalize(Ip);
+         }
+         else
+         {
+             setring S1;
+             Ip=0;
+         }
+     }
+     
+     if(size(Ip)==0)
+     {
+         setring br;
+         return(preTest(args, result,prime(p-1)));
+     }
+ 
+     def Gp = imap(br, result);
+
+     attrib(Gp, "isSB", 1);
+     for (i = ncols(Jp); i > 0; i--)
+     {
+         if (reduce(Jp[i], Gp, 1) != 0)
+         {
+             setring br;
+             return(0);
+         }
+     }
+     
+     attrib(Ip,"isSB",1);
+     for (i = ncols(Gp); i > 0; i--)
+     {
+         if (reduce(Gp[i], Ip, 1) != 0)
+         {
+             setring br;
+             return(0);
+         }
+     }
+     setring br;
+     return(1);
+ }
+ 
+proc modprod(module I, module J, poly f)
+{
+    ideal K = factorize(f,1);
+    def Ls = basering;
+    list l = ringlist(Ls);
+     l[1] = list(l[1]) + list(list(l[2][size(l[2])])) + 
+            list(list(l[3][size(l[3])-1])) + list(ideal(0));
+     l[2] = delete(l[2],size(l[2]));
+     l[3] = delete(l[3],size(l[3])-1);
+     
+     def S1 = ring(l);
+     setring S1;
+     number Num;
+     list LL,Lk,T2;
+     ideal K = imap(Ls,K);
+     module J = imap(Ls,J);
+     module I =imap(Ls,I);
+     def S2;
+    for(int j=1;j<=ncols(K);j++)
+    {
+             LL[j]=K[j];
+             Num = number(K[j]);
+             T2 = ringlist(S1);
+             T2[1][4][1] = Num;
+             S2 = ring(T2);
+             setring S2;
+             module IJ = imap(S1,I)*imap(S1,J);
+             setring S1;
+             Lk[j] = imap(S2,IJ);
+    }
+    setring Ls;
+    return(chinrempoly(imap(S1,Lk),imap(S1,LL)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc sum_list(list #)
+{
+   if(typeof(#[1])=="ideal")
+   {
+      ideal M;
+   }
+   else
+   {
+      module M;
+   }
+
+   int i;
+   for(i = 1; i <= ncols(#[1]); i++)
+   {
+       M[i] = #[1][i] + #[2][i];
+   }
+   return(M);
+}
+
+proc nfmodStd_Hensel(def I, list #)
+{
+    intvec opt = option(get);
+    option(redSB);
+    
+    //list L=#;
+    def Rbs=basering;
+    poly f;
+    ideal dP;
+    int tmp=1;
+    if(typeof(I)!="ideal")
+    {
+        tmp =0;
+    }
+    int n=nvars(Rbs);
+    if(size(I)==0)
+    {
+        if(!tmp)
+        {
+            return(module([0]));
+        }
+        return(ideal(0));
+    }
+    if(npars(Rbs)==0)
+    {
+        if(!tmp)
+        {
+            ERROE("not implemented");
+        }
+        def J=modStd(I,#);//if algebraic number is in Q
+        if(size(#)>0)
+        {
+            return(cleardenomIdeal(J));
+        }
+        return(J);
+    }
+    def R;
+    list rl=ringlist(Rbs);
+    f=rl[1][4][1];
+    if(tmp)
+    {
+        rl[2][n+1]=rl[1][2][1];
+        rl[1]=rl[1][1];
+        rl[3][size(rl[3])+1]=rl[3][size(rl[3])];
+        rl[3][size(rl[3])-1]=list("dp",1);
+        R=ring(rl);
+    }
+    else
+    {
+        rl[2] = rl[2] + rl[1][2];
+        rl[3][size(rl[3])+1] = rl[1][3][1];
+        rl[1] = rl[1][1];
+        R = ring(rl);
+    }
+    setring R;
+    poly f=imap(Rbs,f);
+    def I=imap(Rbs,I);
+    I = simplify(I,2);// eraze the zero generatos
+    if(f==0)
+    {
+        ERROR("minpoly must be non-zero");
+    }
+    
+    ideal dI = I,f;
+    
+    int i,j;
+    int q = 536870909;
+    
+    bigint p = q;
+    if(size(#)!=0)
+    {
+        q=#[1];
+    }
+    p=q;
+    int q1,q2;
+    (q1,q2) = (q div 2, q);
+    while(!PrimeTestTask(q,list(dI)))
+    {
+        q = prime(random(q1, q2));
+    }
+    if(q<2)
+    {
+        ERROR("no more primes");
+    }
+    p=q;
+    module F,pG,pZ,Z2;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    list rl = ringlist(R);
+    rl[1] = q;
+    def S = ring(rl);
+    setring S;
+    
+    module Z,M,Z2;
+    ideal I = imap(R,dI);
+    poly f = I[ncols(I)];
+    I = I[1..ncols(I)-1];
+    ideal Gp,G1,G2,G3;
+    // return GB of I and transformation matrix T
+    list Ym = modLift(I,f);
+    if(size(Ym[1])==0)
+    {
+        // either prime q is unlucky or not admissible w.r.t. I+<f>
+        setring Rbs;
+        return(nfmodStdHensel(I,prime(q-1)));
+    }
+    Gp = Ym[1];
+    Z = Ym[2];
+    attrib(Gp,"isSB",1);
+    
+    setring Rbs;
+    list bf =ringlist(Rbs);
+    bf[1][1]=q;
+    ring Rb = ring(bf);
+    setring Rb;
+    
+    module F,pG,pZ,Z2,M,Z;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    Gp = imap(S,Gp);
+    Z = imap(S,Z);
+    
+    setring Rbs;
+    module F,pG,pZ,Z2;
+    module TR;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    F = I;
+    pG = imap(S,Gp);
+    pZ = imap(S,Z);
+    
+    setring R;
+    Gp = imap(S,Gp);
+    tG = farey(Gp,p);
+    
+    F = I;
+    pG = imap(S,Gp);
+    pZ = imap(S,Z);
+    attrib(f,"isSB",1);
+    system("--ticks-per-sec",1000);
+    int tr=timer;
+    module TR;
+    while(1)
+    {
+        i++;
+        i;
+        " =============== i ====================";
+        //setring Rbs;//Rbs
+        tr = timer;
+        G1 = ideal(1/(p^i) * sum_list(F*pZ,(-1)*pG));
+        G1 = reduce(G1,f);
+        timer-tr;
+        "=========================================";
+        tr = timer;
+        TR = F*pZ;
+        timer-tr;
+        " =============== timer 1 ====================";
+        
+        tr = timer;
+        TR = modprod(F,pZ,f);
+        timer-tr;
+        "++++++++++++++++++++++++++++++++++++++++++++++";
+        setring Rb;
+        tr =timer;
+        G1 = imap(R,G1);//Rbs
+        attrib(Gp,"isSB",1);
+        G2 = reduce(G1,Gp);
+        G3 = sum_list(G1,(-1)*G2);
+        timer-tr;
+        " =============== timer 2 ====================";
+        tr=timer;
+        M = lift(Gp,G3);
+        timer-tr;
+        " =============== timer 3 ====================";
+        tr = timer;
+        setring Rbs;
+        TR = imap(Rb,M);
+        setring R;
+        Z2 = (-1)*imap(S,Z)*imap(Rbs,TR);
+        Z2 = reduce(Z2,f);
+        //Z2 = (-1)*Z*M;
+        timer-tr;
+        " =============== timer 4 ====================";
+        tr =timer;
+        TR = modprod((-1)*imap(S,Z), imap(Rbs,TR),f);
+        timer-tr;
+        "++++++++++++++++++++++++++++++++++++++++++++++";
+        setring Rbs;
+        tr = timer;
+        G2 = imap(Rb,G2);
+        Z2 = imap(R,Z2);//Rb
+        pG = sum_list(pG, module(p^i*G2));
+        pZ = sum_list(pZ, p^i*Z2);
+        timer-tr;
+        " =============== timer 5 ====================";
+        setring R;
+        tr = timer;
+        pZ = imap(Rbs,pZ);
+        pG = imap(Rbs, pG);
+        tG1 = farey(ideal(imap(Rbs,pG)),p^(i+1));
+        timer-tr;
+        " =============== timer 6 ====================";
+        attrib(tG,"isSB",1);
+        "+++++++++ reduce redult ++++++++++";
+        size(reduce(tG1,tG)) == 0;
+        if(size(reduce(tG1,tG)) == 0)
+        {
+            // preTest
+            if(preTest(dI,tG1,prime(q-1)))
+            {
+                /* ======== final test ============*/
+                // I is in tG1
+                setring Rbs;
+                tG1 = imap(R,tG1);
+                attrib(tG1,"isSB",1);
+                if(size(reduce(I,tG1)) == 0)
+                {
+                    G3 = std(tG1);// tG1 is SB
+                    if(size(reduce(G3,tG1)) == 0)
+                    {
+                        option(set, opt);
+                        return(tG1);
+                    }
+                }
+                
+            }
+        }
+        tG = tG1;
+    }
+}
+
+
+proc nfmodStdHensel(def I, list #)
+{
+    intvec opt = option(get);
+    option(redSB);
+    
+    //list L=#;
+    def Rbs=basering;
+    poly f;
+    ideal dP;
+    int tmp=1;
+    if(typeof(I)!="ideal")
+    {
+        tmp =0;
+    }
+    int n=nvars(Rbs);
+    if(size(I)==0)
+    {
+        if(!tmp)
+        {
+            return(module([0]));
+        }
+        return(ideal(0));
+    }
+    if(npars(Rbs)==0)
+    {
+        if(!tmp)
+        {
+            ERROE("not implemented");
+        }
+        def J=modStd(I,#);//if algebraic number is in Q
+        if(size(#)>0)
+        {
+            return(cleardenomIdeal(J));
+        }
+        return(J);
+    }
+    def R;
+    list rl=ringlist(Rbs);
+    f=rl[1][4][1];
+    if(tmp)
+    {
+        rl[2][n+1]=rl[1][2][1];
+        rl[1]=rl[1][1];
+        rl[3][size(rl[3])+1]=rl[3][size(rl[3])];
+        rl[3][size(rl[3])-1]=list("dp",1);
+        R=ring(rl);
+    }
+    else
+    {
+        rl[2] = rl[2] + rl[1][2];
+        rl[3][size(rl[3])+1] = rl[1][3][1];
+        rl[1] = rl[1][1];
+        R = ring(rl);
+    }
+    setring R;
+    poly f=imap(Rbs,f);
+    def I=imap(Rbs,I);
+    I = simplify(I,2);// eraze the zero generatos
+    if(f==0)
+    {
+        ERROR("minpoly must be non-zero");
+    }
+    
+    ideal dI = I,f;
+    
+    int i,j;
+    int q = 536870909;
+    
+    bigint p = q;
+    if(size(#)!=0)
+    {
+        q=#[1];
+    }
+    p=q;
+    int q1,q2;
+    (q1,q2) = (q div 2, q);
+    while(!PrimeTestTask(q,list(dI)))
+    {
+        q = prime(random(q1, q2));
+    }
+    if(q<2)
+    {
+        ERROR("no more primes");
+    }
+    p=q;
+    module F,pG,pZ,Z2;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    list rl = ringlist(R);
+    rl[1] = q;
+    def S = ring(rl);
+    setring S;
+    
+    module Z,M,Z2;
+    ideal I = imap(R,dI);
+    poly f = I[ncols(I)];
+    I = I[1..ncols(I)-1];
+    ideal Gp,G1,G2,G3;
+    // return GB of I and transformation matrix T
+    list Ym = modLift(I,f);
+    if(size(Ym[1])==0)
+    {
+        // either prime q is unlucky or not admissible w.r.t. I+<f>
+        setring Rbs;
+        return(nfmodStdHensel(I,prime(q-1)));
+    }
+    Gp = Ym[1];
+    Z = Ym[2];
+    attrib(Gp,"isSB",1);
+    
+    setring Rbs;
+    list bf =ringlist(Rbs);
+    bf[1][1]=q;
+    ring Rb = ring(bf);
+    setring Rb;
+    
+    module F,pG,pZ,Z2,M,Z;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    Gp = imap(S,Gp);
+    Z = imap(S,Z);
+    
+    setring Rbs;
+    module F,pG,pZ,Z2;
+    module TR;
+    ideal tG,tG1,G1,G2,G3,Gp;
+    F = I;
+    pG = imap(S,Gp);
+    pZ = imap(S,Z);
+    
+    setring R;
+    Gp = imap(S,Gp);
+    tG = farey(Gp,p);
+    
+    F = I;
+    pG = imap(S,Gp);
+    pZ = imap(S,Z);
+    attrib(f,"isSB",1);
+    system("--ticks-per-sec",1000);
+    int tr=timer;
+    module TR;
+    list Ln;
+    while(1)
+    {
+        i++;
+        i;
+        " =============== i ====================";
+        //setring Rbs;//Rbs
+        tr = timer;
+        G1 = ideal(1/(p^i) * sum_list(F*pZ,(-1)*pG));
+        G1 = reduce(G1,f);
+        timer-tr;
+        "=========================================";
+        setring Rb;
+        
+        G1 = imap(R,G1);//Rbs
+        attrib(Gp,"isSB",1);
+        tr =timer;
+        Ln = division(G1,Gp);
+        timer-tr;
+        M = Ln[1];
+        G2 = Ln[2];// Gp*M -G2 = G1
+        "====================== Ln ===============";
+        Z2 = (-1)*Z*transpose(M);
+        
+        setring Rbs;
+        tr = timer;
+        G2 = imap(Rb,G2);
+        G2;
+        "???????????????????????????????????????????????????";
+        pG;
+        Z2 = imap(R,Z2);//Rb
+        pG = sum_list(pG, module(p^i*G2));
+        pZ = sum_list(pZ, p^i*Z2);
+        timer-tr;
+        " =============== timer 5 ====================";
+        setring R;
+        tr = timer;
+        pZ = imap(Rbs,pZ);
+        pG = imap(Rbs, pG);
+        tG1 = farey(ideal(imap(Rbs,pG)),p^(i+1));
+        timer-tr;
+        " =============== timer 6 ====================";
+        attrib(tG,"isSB",1);
+        "+++++++++ reduce redult ++++++++++";
+        size(reduce(tG1,tG)) == 0;
+        if(size(reduce(tG1,tG)) == 0)
+        {
+            // preTest
+            if(preTest(dI,tG1,prime(q-1)))
+            {
+                /* ======== final test ============*/
+                // I is in tG1
+                setring Rbs;
+                tG1 = imap(R,tG1);
+                attrib(tG1,"isSB",1);
+                if(size(reduce(I,tG1)) == 0)
+                {
+                    G3 = std(tG1);// tG1 is SB
+                    if(size(reduce(G3,tG1)) == 0)
+                    {
+                        option(set, opt);
+                        return(tG1);
+                    }
+                }
+                
+            }
+        }
+        tG = tG1;
+    }
+}
+

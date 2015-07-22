@@ -1,0 +1,2079 @@
+///////////////////////////////////////////////////////////////////////////////
+version=" ";
+category="Commutative Algebra";
+info=" ";
+LIB "modstd.lib";
+LIB "linalg.lib";
+LIB "crazystd.lib";
+//LIB "TranModStdOne.lib";
+
+
+// for small primes this algorithm is not working 
+// copy
+static proc prime_test(int p, ideal I)
+{
+    
+    int i,j;
+    poly f;
+    number num;
+    bigint d1,d2,d3;
+    for(i = 1; i <= size(I); i++)
+    {
+        f = cleardenom(I[i]);
+        if(f == 0)
+        {
+            return(0);
+        }
+        num = leadcoef(I[i])/leadcoef(f);
+        d1 =bigint(numerator(num));
+        d2 =bigint(denominator(num));
+        if((d1 mod p) == 0)
+        {
+            return(0);
+        }
+        if((d2 mod p) == 0)
+        {
+            return(0);
+        }
+        for(j = size(f); j > 0; j--)
+        {
+            d3 =bigint(leadcoef(f[j]));
+            if((d3 mod p) == 0)
+            {
+                return(0);
+            }
+        }
+    }
+    return(1);
+}
+
+////////////////////////////////////////////////////////////////////////
+
+static proc collect_coeffs(ideal I)
+{
+    // return all coef in I w.r.t main variable(s)
+    // basering should contain parameter(s) or only main variable(s)
+    def G=basering;
+    int pr=npars(G);
+    list L;
+    if(pr==0)
+    {
+        ERROR("the coefficient field is not rational function field");
+    }
+    else
+    { 
+        int i,j;
+        poly g;
+        list  J1,J2;
+        number n1,n2,N;
+        I=normalize(I);
+        i=1;
+        while(i<=ncols(I))
+        {
+            g=I[i];
+            for(j=1;j<=size(g);j++)
+            {
+                N=leadcoef(g[j]);
+                n1=numerator(N);
+                n2=denominator(N);
+                J1=J1+list(n1);
+                J2=J2+list(n2);
+            }
+            i++;
+        }
+        L=J1,J2;
+    }
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////
+
+static proc Testlist_all(list L)
+{
+    // basering must contain only main variable(s) i.e. without
+    // parameters
+    list T;
+    ideal I;
+    int i,j;
+    for(j=1;j<=size(L);j++)
+    {
+        
+        for(i=1;i<=size(L[j]);i++)
+        {
+            if(deg(L[j][i])!=0)
+            {
+                I=I+L[j][i];
+            }
+        }
+        T=T+list(I);
+        I=0;
+    }
+    return(T);
+}
+// copy
+proc fareypoly(poly f, poly g,list #)
+{
+    poly r1,r2,r3,t1,t2,q_m,r_m,t_m,q1;
+    q_m = 1;
+    
+    if(f==0)
+    {
+        return(list(poly(0),poly(1)));
+    }
+    
+    if(2*deg(f)<deg(g))
+    { 
+        return(list(f,poly(1)));
+    }
+    number h=number(1)/lu(f);
+    r2=f*h;
+    r1=g/lu(g);
+    t1=0;
+    t2=h;
+    list ls,l1,l,T;
+    
+    int i=0;
+    
+    while(r2!=0)
+    {
+        i++;
+        ls=division(r1,r2);
+        r3=r2;
+        q1=ls[1][1,1];
+        h=number(1)/lu(ls[2][1]);
+        r2=ls[2][1]*h;
+        r1=r3;
+        r3=t2;
+        t2=(t1-q1*t2)*h;
+        t1=r3;
+        
+        if( deg(q1) > deg(q_m))
+        {
+            q_m=q1;
+            r_m=r1;
+            t_m=t1;
+        }
+    }
+    if(deg(q_m)==1)
+    {
+        //print("degree of qm is 1");
+        return(list(f,poly(1)));//trivial solution
+    }
+    else
+    {
+        poly vd = gcd(r_m,t_m);
+        if(vd!=1)
+        {
+            //print("gcd condition is not satisfied");
+            t_m = t_m/vd;
+            r_m = r_m/vd;
+            if(size(#)>0)
+            {
+                number ut=number(1)/lu(t_m[size(t_m)]);
+                return(list(ut*r_m,ut*t_m));//unrealistic solution
+            }
+            number ut=lu(t_m);
+            return(list(r_m/ut,t_m/ut));
+        }
+        else
+        {
+            if(size(#)>0)
+            {
+                number ut=number(1)/lu(t_m[size(t_m)]);
+                return(list(ut*r_m,ut*t_m));
+            }
+            number ut=lu(t_m);
+            return(list(r_m/ut,t_m/ut)); 
+        }
+    }
+}
+
+//copy
+static proc lu(poly f)
+{
+    if(f!=0)
+    { 
+        return(leadcoef(f));
+    }
+    return(1);
+}
+
+/////////////// copied from modstd.lib /////////////////////////////////
+//copy
+static proc deleteUnluckyPrimes_std(list modresults)
+{
+    int size_modresults = size(modresults);
+
+    /* sort results into categories.
+     * each category is represented by three entries:
+     * - the corresponding leading ideal
+     * - the number of elements
+     * - the indices of the elements
+     */
+    
+    list cat;
+    ideal L;
+    int i, j, size_cat;
+    for (i = 1; i <= size_modresults; i++) {
+        L = lead(modresults[i]);
+        attrib(L, "isSB", 1);
+        for (j = 1; j <= size_cat; j++) {
+            if (size(L) == size(cat[j][1])
+                && size(reduce(L, cat[j][1])) == 0
+                && size(reduce(cat[j][1], L)) == 0) {
+                cat[j][2] = cat[j][2]+1;
+                cat[j][3][cat[j][2]] = i;
+                break;
+            }
+        }
+        if (j > size_cat) {
+            size_cat++;
+            cat[size_cat] = list();
+            cat[size_cat][1] = L;
+            cat[size_cat][2] = 1;
+            cat[size_cat][3] = list(i);
+        }
+    }
+
+    /* find the biggest categories */
+    int cat_max = 1;
+    int max = cat[1][2];
+    for (i = 2; i <= size_cat; i++) {
+        if (cat[i][2] > max) {
+            cat_max = i;
+            max = cat[i][2];
+        }
+    }
+
+    /* return all other indices */
+    list unluckyIndices;
+    for (i = 1; i <= size_cat; i++) {
+        if (i != cat_max) {
+            unluckyIndices = unluckyIndices + cat[i][3];
+        }
+    }
+    return(unluckyIndices);
+}
+//copy
+static proc pTest_tran(ideal JpTest, ideal fareyResult,int Testp)
+{
+    
+    def Gt=basering;
+    int nn=nvars(Gt);
+    int pr=npars(Gt);
+    list rl=ringlist(Gt);
+    rl[1][1]=Testp;
+    def FG = ring(rl);
+    setring FG;
+    ideal Jp = imap(Gt,JpTest);
+    ideal fry = imap(Gt,fareyResult);
+    attrib(fry,"isSB",1);
+    attrib(Jp,"isSB",1);
+    if(Is_belongs(Jp,fry))
+    {
+        if(size(reduce(fry,Jp))==0)
+        {
+            setring Gt;
+            return(1);
+        }
+    }
+    setring Gt;
+    return(0);
+}
+//copy
+static proc prime_pass(int p, ideal I)
+{
+    //return a prime for which prime_test()==true
+    // p must be prime
+    int i,q;
+    q=p;
+    if(q<2)
+    {
+        ERROR("No more Primes");
+    }
+    else
+    {
+        while(1)
+        {
+            i++;
+            if(prime_test(p,I)==1)
+            {
+                return(q);
+            }
+            q = prime(q-1);
+        }
+    }
+}
+//copy
+static proc Is_belongs(ideal I, ideal fareyresult)
+{
+    //return 1 if I included in J otherwise 0
+    attrib(fareyresult,"isSB",1);
+    int i;
+    for(i = ncols(I); i >= 1; i--)
+    {
+        if(reduce(I[i],fareyresult,1)!= 0)
+        {
+            return(0);
+        }
+    }
+    return(1);
+}
+//copy
+static proc finalTest_tran(ideal I, ideal fareyresult)
+{
+    //return 1 if I included in fareyresult otherwise 0
+    attrib(fareyresult,"isSB",1);
+    int i;
+    for(i = ncols(I); i >= 1; i--)
+    {
+        if(reduce(I[i],fareyresult,1)!= 0)
+        {
+            return(0);
+        }
+    }
+    return(1);
+    
+    //return 1 if std(fareyresult) included in fareyresult otherwise 0
+    attrib(fareyresult,"isSB",1);
+    ideal J=std(fareyresult);
+    if(size(reduce(J,fareyresult,1))==0)
+    {
+        return(1);
+    }
+    return(0);
+}
+//copy
+proc polyInterpolation(list d, list e,list #)
+{
+    /*  compute a polynomial from a given numeric data
+     *  size of d and e must be equal
+     * d is list conataining distinct element
+     */
+    
+    /*optional parameters  */
+    
+    int vr,i;
+    int sz=size(#);
+    int s_d=size(d);
+    poly f,g;
+    list l_p,ltd;
+    f=e[1];
+    g=1;
+    int dc,j,dt,td;
+    l_p=f,g,d;
+    vr =1;
+    number s,t;
+    if(sz<=2)
+    {
+        if(sz)
+        {
+            vr=#[1];
+        }
+        if(s_d==1)
+        {
+            return(l_p);
+        }
+        for(j=2;j<=s_d;j++)
+        {
+            s = (d[j]-d[1]);
+            t = e[j] - number(subst(f,var(vr),d[j]));
+            g = g*(var(vr)-d[j-1]);
+            for(i=2;i< j;i++)
+            {
+                s= s*(d[j]-d[i]);
+            }
+            t = t/s;
+            f = f + t*g;
+        }
+        l_p=f,g,d;
+        return(l_p);
+    }
+    else
+    {
+        // add points
+        vr = #[1];
+        ltd = #[4] + d;
+        dt = size(#[4]);
+        f = #[2];
+        g = #[3];
+        for(j=1;j<=s_d;j++)
+        {
+            s = d[j]-ltd[1];
+            t = e[j] - number(subst(f,var(vr),d[j]));
+            g = g*(var(vr)-ltd[dt+j-1]);
+            for(i=2;i < dt+j;i++)
+            {
+                s= s*(ltd[dt+j]-ltd[i]);
+            }
+            t = t/s;
+            f = f + t*g;
+        }
+        l_p=f,g,ltd;
+        return(l_p);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc test_the_shift(ideal I, int n, int pa)
+{
+    // I is coefficients of given ideal in the main procedure
+    // n is number of parameters
+    
+    list sh = chose_a_shift(I,pa);
+    if(size(I)==0)
+    {
+        return(sh);
+    }
+    ideal J=Evaluate_givenI(I,sh,1,n);
+    int i;
+    while(size(J)!=ncols(I))
+    {
+        i++;
+        sh = chose_a_shift(I,pa);
+        J=Evaluate_givenI(I,sh,1,n);
+    }
+    return(sh);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc chose_a_shift(ideal I, int pa)
+{
+    // I is coefficients of a given ideal in the main procedure
+    // pa is number of parameters
+    list sh,s,h;
+    h[1] = random(10,200);
+    sh[1] = number(h[1]);
+    for(int i=2;i<=pa;i++)
+    {
+        h[i]=h[i-1]+1;
+        sh[i]=number(h[i]);
+        //sh[i]=number(h[i])/s[i];
+    }
+    return(sh);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc Next_prime(int p)
+{
+    int i;
+    while(1)
+    {
+        i++;
+        if((p+i)%2 !=0)
+        {
+            if(prime(p+i)==p+i)
+            {
+                return(p+i);
+            }
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc chose_prime(int pa)
+{
+    // return consequetive pa prime(s)
+    int p=2;
+    int j;
+    list L;
+    for(j=1;j<=pa;j++)
+    {
+        L[j]=p;
+        p=Next_prime(p);
+    }
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc Evaluate_givenI(ideal J,list pr, int i,int n)
+{
+    // default value of i and us is 1
+    int sz=ncols(J);
+    int sr=size(pr);
+    int k;
+    for(int j=1;j<=sz;j++)
+    {
+        for(k=n+1;k<=n+sr;k++)
+        {
+            J=subst(J,var(k),number(pr[k-n])**i);
+        }
+    }
+    return(J);
+}
+
+proc list_coef_index(list L, int idx1, int idx2,int lmt)
+{
+    ideal K;
+    list lv;
+    for(int j=1;j<=lmt;j++)
+    {
+        K = L[j];
+        lv[j] = leadcoef(K[idx1][idx2]);
+    }
+    return(lv);
+}
+
+proc list_all_monom(ideal T)
+{
+    int nr=ncols(T);
+    list L,E;
+    list l;
+    int i,j;
+    poly f;
+    for(j=1;j<=nr;j++)
+    {
+        f=T[j];
+        for(i=1;i<=size(f);i++)
+        {
+            l[i]=leadmonom(f[i]);
+        }
+        L[j]=l;
+        l=E;
+    }
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc FirstModLift(ideal I, list pr,list shft, int n, int in_value, ideal cJ)
+{
+    /* first step list 
+     * I a given ideal
+     * pr list of primes where its size is equal to size of parameters
+     * kr is the bound 
+     * n is number of variables
+     * in_value must be greater than 1
+     */
+    /*%%%%%%%%%%%%%%%%%% New New New %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+  
+    def G_t=basering;
+    int pa,kr;
+    pa=1;
+    list rl=ringlist(G_t);
+    list la=rl[1][2];
+    list m=rl[2];
+    m = m[1..n];
+    m[(n+1)..(n+pa)]=la[1..pa];
+    rl[2]=m;
+    list tm = rl[3];
+    tm[2] = rl[1][3];
+    rl[1]=rl[1][1];
+    rl[3]=tm;
+    rl[3][size(rl[3])-1]=list("lp",pa);
+    def S_t=ring(rl);
+    setring S_t;
+    list Lk, Zr;
+    setring G_t;
+    ideal J;
+    
+    /*%%%%%%%%%%%%%%%%%%%% end of New %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    
+    int i,k1,k2, r_d1,n_z,m_x;
+    list T,T1,L1,L2,M1,M2,M,lus,lev;
+    number r_d;
+    r_d1 = char(basering)-10;
+    r_d = r_d1;
+    def F;
+    if(r_d==0){r_d = r_d-1;}
+    //r_d = par(1) + r_d;
+    F = Add_the_shift_and_evaluate(I,pr,shft,1,r_d,n, cJ);//r_d =1
+    list L=collect_coeffs(F[1]);
+    r_d = F[2];
+    J=scalIdeal(F[1]);
+    setring S_t;
+    list Lp=imap(G_t,L);
+    ideal J=imap(G_t,J);
+    list lc=Testlist_all(Lp);
+    kill Lp;
+    ideal cI = lc[1]+lc[2];
+    int tt=timer;
+    Lk = modpTran(J, cI, in_value,0);
+    timer-tt;
+    "================= timer ===============";
+    setring G_t;
+    kill L;
+    
+    list Lk = imap(S_t,Lk);
+    if(in_value < Lk[3])
+    {
+        in_value = Lk[3];
+    }
+    J = Lk[1];
+    Zr = Lk[2];
+    kill Lk;
+    J = normalize(J);
+    M = list(J);
+    if(J[1]==1)
+    {
+        return(list(ideal(1)));
+    }
+    
+    int ug;
+    for(int cZ =1;cZ<=ncols(J);cZ++)
+    {
+        if(size(J[cZ])>1)
+        {
+            ug = cZ;
+            break;
+        }
+    }
+    if(!ug)
+    {
+        return(list(J));
+    }
+    
+    lev = leadcoef(J[ug][2]);
+    lus = r_d;
+    list # = n;
+    list L = polyInterpolation(lus,lev,#);
+    
+    int ksz=size(L[3]);
+    poly G1 = L[2];
+    poly G2 = G1*(var(n)-lus[ksz]);
+    poly DR,NR;
+    list fry = fareypoly(L[1],G2,0);
+    //fry;
+    //"===================== 1 =================";
+    DR = fry[2];
+    NR = fry[1];
+    # = list(NR)+list(DR)+list(n)+L;
+    kill L;
+    r_d = r_d-1;
+    if(r_d==0 ){r_d=r_d-1;}
+    F  = Add_the_shift_and_evaluate(I,pr,shft,1,r_d,n, cJ);
+    list L=collect_coeffs(F[1]);
+    r_d = F[2];
+    J=scalIdeal(F[1]);
+    setring S_t;
+    list Lp=imap(G_t,L);
+    J=imap(G_t,J);
+    lc=Testlist_all(Lp);
+    kill Lp;
+    cI = lc[1]+lc[2];
+    tt=timer;
+    Lk = modpTran(J, cI,in_value);
+    timer-tt;
+    "================= timer ===============";
+    setring G_t;
+    kill L;
+        
+    list Lk = imap(S_t,Lk);
+
+    if(in_value < Lk[2])
+    {
+        in_value = Lk[2];
+    }
+    J = normalize(Lk[1]);
+
+    M = M + list(J);
+    lus = r_d;
+    list tak;
+    //list M1,M2;
+    for(k1=ug;k1<=ncols(J);k1++)
+    {
+        n_z = size(J[k1]);
+        if(n_z>1)
+        {
+            for(k2=2;k2<=size(J[k1]);k2++)
+            {
+                if(size(#)<2)
+                {
+                    lev = list_coef_index(M,k1,k2,size(lus));
+                }
+                else
+                {
+                    lev = list_coef_index(list(M[2]), k1, k2,1);
+                }
+                T1 = first_check(I,M,pr,shft,n,lus,lev,k1,k2,in_value,cJ,#);
+                if(m_x < T1[4]){ m_x = T1[4];tak = T1[2];} // max number of std for the first time
+                L1[k2-1] = T1[3];
+                M1[k2-1] = T1[5];
+                M = T1[1];
+                lus = T1[2];
+                # = n;
+            }
+            L2[k1] = L1;
+            M2[k1] = M1;
+            M1 = list();
+            L1 = list();
+        }
+    }
+    L2 = L2,m_x,tak,M2, in_value,Zr;// m_x is maximum degree of denominator or numerator in F_p[z]
+    // in_value is maximum number of data for modpTran
+    return(L2);
+}
+
+//////////////////////////////////////////////////////////////////////////////////    "=======3 =========";////////////
+
+proc first_check(ideal I, list M,list pr, list shft, int n, list lus, list lev, int k1, int k2,
+int in_value, ideal cJ, list #)
+{
+    // index k is lists in M to be interpolated
+    // early termination for polyInterpolation
+    //int i=size(ds);
+    //list lus distinct values vs evaluation points lev
+    //list lds=ds;
+    //int c_k;
+    
+    /*%%%%%%%%%%%%%%%%%% New New New %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    int tt=timer;
+    def G_t=basering;
+    int pa,kr;
+    pa=1;
+    list rl=ringlist(G_t);
+    list la=rl[1][2];
+    list m=rl[2];
+    m = m[1..n];
+    m[(n+1)..(n+pa)]=la[1..pa];
+    rl[2]=m;
+    
+    list tm = rl[3];
+    tm[2] = rl[1][3];
+    rl[1]=rl[1][1];
+    rl[3]=tm;
+    rl[3][size(rl[3])-1]=list("lp",pa);
+    def S_t=ring(rl);
+    
+    /*%%%%%%%%%%%%%%%%%%%% end of New %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    ideal Id;
+    list Tr,fr,L,L1;
+    int ksz,nx;
+    number us;
+
+    number ev;
+    poly G1,G2,DR,NR;
+
+    setring S_t;
+    ideal Id,cI;
+    list lc;
+    def Lk;
+
+    setring G_t;
+    def Fb;
+    //def Lk;
+    if(size(#)==1)
+    {
+        nx = #[1];
+
+        L = polyInterpolation(list(lus[1..size(lus)-1]),list(lev[1..size(lev)-1]),#);
+        # = list(nx)+L;
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(nx)-L[3][ksz]);
+        fr = fareypoly(L[1],G2,0);
+        fr;
+        "======================= 4 =====================";
+        NR = fr[1];
+        DR = fr[2];
+        L = polyInterpolation(lus[size(lus)],lev[size(lev)],#);
+        # = list(nx)+L;
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(nx)-L[3][ksz]);
+        fr = fareypoly(L[1],G2,0);
+        fr;
+        "======================= 5 =====================";
+        if(fr[1]==NR and fr[2]==DR)
+        {
+            return(list(M,lus,list(G1,ksz-1),ksz-1,fr));
+        }
+        while(1)
+        {
+            NR = fr[1];
+            DR = fr[2];
+            lus = L[3];
+            us = lus[ksz]-1;
+
+            if(us==par(1) or us ==0){us=us+1;}
+
+            Fb = Add_the_shift_and_evaluate(I,pr,shft,1,us,n,cJ);
+            L1=collect_coeffs(Fb[1]);
+            us = Fb[2];
+            Id=scalIdeal(Fb[1]);
+            setring S_t;
+            list L1=imap(G_t,L1);
+            Id=imap(G_t,Id);
+            lc=Testlist_all(L1);
+            kill L1;
+            cI = lc[1]+lc[2];
+            tt=timer;
+            Lk = modpTran(Id, cI, in_value);
+            timer-tt;
+            "================= timer ===============";
+            setring G_t;
+            def Lk = imap(S_t,Lk);
+            Id = normalize(Lk[1]);
+            if(in_value < Lk[2])
+            {
+                in_value = Lk[2];
+            }
+            kill Lk;
+            ev = leadcoef(Id[k1][k2]);
+            M = M + list(Id);
+            # = list(n)+L;
+            L = polyInterpolation(list(us),list(ev),#);
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(n)-L[3][ksz]);
+            fr = fareypoly(L[1],G2,0);
+            fr;
+            "================== 6 ================";
+            if(fr[1]==NR and fr[2]==DR)
+            {
+                return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+                break;
+            }
+        }
+    }
+    else
+    {
+        NR = #[1];
+        DR = #[2];
+        # = #[3..size(#)];
+        L = polyInterpolation(lus,lev,#);
+        ksz=size(L[3]);
+        G1 = L[2];
+        G2 = G1*(var(n)-L[3][ksz]);
+        fr = fareypoly(L[1],G2,0);
+        fr;
+        "================= 2 =================";
+        if(fr[1]==NR and fr[2]==DR)
+        {
+            return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+        }
+        while(1)
+        {
+            NR = fr[1];
+            DR = fr[2];
+            lus = L[3];
+            us = lus[ksz]-1;
+            if(us==par(1) or us ==0){us=us+1;}
+
+            Fb = Add_the_shift_and_evaluate(I,pr,shft,1,us,n,cJ);
+            L1=collect_coeffs(Fb[1]);
+            Id=scalIdeal(Fb[1]);
+            us = Fb[2];
+            setring S_t;
+            list L1=imap(G_t,L1);
+            Id=imap(G_t,Id);
+            lc=Testlist_all(L1);
+            kill L1;
+            cI = lc[1]+lc[2];
+            tt=timer;
+            Lk = modpTran(Id, cI,in_value);
+            timer-tt;
+            "================= timer ===============";
+            setring G_t;
+            def Lk = imap(S_t,Lk);
+            Id = normalize(Lk[1]);
+            if(in_value < Lk[2])
+            {
+                in_value = Lk[2];
+            }
+            kill Lk;
+            ev = leadcoef(Id[k1][k2]);
+            M = M + list(Id);
+            # = list(n)+L;
+            L = polyInterpolation(list(us),list(ev),#);
+            ksz=size(L[3]);
+            G1 = L[2];
+            G2 = G1*(var(n)-L[3][ksz]);
+            fr = fareypoly(L[1],G2,0);
+            fr;
+            "===================== 3 ===================";
+            if(fr[1]==NR and fr[2]==DR)
+            {
+                return(list(M,L[3],list(G1,ksz-1),ksz-1,fr));
+                break;
+            }
+        }
+    }
+}
+
+static proc polyInterpolationNormal(list d, list e,int vr)
+{
+    /*  compute polynomial interpolation
+     *  size of d and e must be equal
+     * d is list conataining distinct element
+     */
+    int i;
+    int s_d=size(d);
+    poly f=e[1];
+    poly g=1;
+    number s,t;
+    if(s_d==1)
+    {
+        return(f);
+    }
+    for(int j=2;j<=s_d;j++)
+    {
+        s = (d[j]-d[1]);
+        t = e[j] - number(subst(f,var(vr),d[j]));
+        g = g*(var(vr)-d[j-1]);
+        for(i=2;i< j;i++)
+        {
+            s= s*(d[j]-d[i]);
+        }
+        t = t/s;
+        f = f + t*g;
+    }
+    return(f);
+    
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+static proc list_coef_index(list L, int idx1, int idx2,int lmt)
+{
+    ideal K;
+    list lv;
+    for(int j=1;j<=lmt;j++)
+    {
+        K = L[j];
+        lv[j] = leadcoef(K[idx1][idx2]);
+    }
+    return(lv);
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+
+static proc list_all_monom(ideal T)
+{
+    int nr=ncols(T);
+    list L,E;
+    list l;
+    int i,j;
+    poly f;
+    for(j=1;j<=nr;j++)
+    {
+        f=T[j];
+        for(i=1;i<=size(f);i++)
+        {
+            l[i]=leadmonom(f[i]);
+        }
+        L[j]=l;
+        l=E;
+    }
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc generate_two_lists(ideal I, list pr, list shft, 
+        list Lf, list eta, int m_sz,int in, int fn, int n, in_value, ideal cJ,list #)
+{
+    int tt=timer;
+    int tmp = size(#);
+    def G_t = basering;
+    int pa,kr;
+    pa=1;
+    list rl=ringlist(G_t);
+    list la=rl[1][2];
+    list m=rl[2];
+    m = m[1..n];
+    m[(n+1)..(n+pa)]=la[1..pa];
+    rl[2]=m;
+    list tm = rl[3];
+    tm[2] = rl[1][3];
+    rl[1]=rl[1][1];
+    rl[3]=tm;
+    rl[3][size(rl[3])-1]=list("lp",pa);
+    def S_t=ring(rl);
+    setring S_t;
+    def Lk;
+    ideal Id,cI;
+    setring G_t;
+    
+    /*%%%%%%%%%%%%%%%%%%%% end of New %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%*/
+    
+    int i,k1,k2;
+    list T,T1,L1,L2;
+    list L;
+    
+    ideal Id;
+    list M1,M2;
+    int i1,i2,i3;
+    def F;
+    for(i1=in;i1<=fn;i1++)
+    {
+        for(i2=1;i2<=m_sz;i2++)
+        {
+            F = Add_the_shift_and_evaluate(I,pr,shft,i1,eta[i2],n,cJ);
+            L = collect_coeffs(F[1]);
+            Id = scalIdeal(F[1]);
+            if(eta[i2]!=F[2])
+            {
+               print("wrong evaluation points are used");
+            }
+            setring S_t;
+            list Lp=imap(G_t,L);
+            Id=imap(G_t,Id);
+            list lc=Testlist_all(Lp);
+            kill Lp;
+            cI = lc[1]+lc[2];
+            tt=timer;
+            Lk = modpTran(Id, cI, in_value);
+            timer-tt;
+            "================= timer ===============";
+            kill lc;
+            setring G_t;
+
+            def Lk = imap(S_t,Lk);
+            if(in_value < Lk[2])
+            {
+                  in_value = Lk[2];
+            }
+            M1[i2] = normalize(Lk[1]);
+            kill Lk;
+        }
+
+        list l(i1)= arrange_list_first(M1);
+        M1 = list();
+    }
+    M2= l(in..fn);
+    list eta1,cK,lus;
+    int m_z;
+    poly G,g;
+    list l1,l2,l3;
+    for(i1=1;i1<=size(M2);i1++)
+    {
+        l1 = M2[i1];
+        for(i3=1;i3<=size(l1);i3++)
+        {
+            if(typeof(Lf[i3])!="none")
+            {
+                cK = Lf[i3];
+                for(i2=1;i2<=size(cK);i2++)
+                {
+                    G = cK[i2][1];
+                    m_z = cK[i2][2];
+                    eta1 = eta[1..m_z];
+                    lus = return_coef_indx_wrtk(l1[i3],i2+1,m_z);
+                    g = polyInterpolationNormal(eta1,lus,n);
+                    M1[i2] = fareypoly(g,G,0);
+                }
+                l2[i3]=M1;
+                M1 = list();
+            }
+        }
+        M2[i1]=l2;
+        l2 = list();
+    }
+    if(tmp>0)
+    {
+       return(list(M2,in_value));
+    }
+    return(M2);
+}
+
+
+proc transtd(ideal I, list pr, list shft, int n, int in, int fn, int in_value, ideal cJ,list #)
+{
+    int tmp = size(#);
+    def St=basering;
+    int nx=nvars(St);
+    int nr=nx-size(pr);
+    list ly=ringlist(St);
+    list L,l1,l3,l4,l5,A1,l2,lp;
+    l1=ly[2];
+    l2=l1[1..nr];
+    L[2]=l2;
+    l3=ly[1][2]+list(l1[(nr+1)..nx]);
+    l5=ly[3];
+    l4=l5[2];
+    intvec vec2 = ly[1][3][1][2];
+    intvec vec1 = l4[2];
+    vec1[nrows(vec1)+1..nrows(vec1)+nrows(vec2)] = vec2[1..nrows(vec2)];
+    l4[2] = vec1;
+    A1=ly[1][1],l3,list(l4),ly[4];
+    L[1]=A1;
+    l5=delete(l5,2);
+    L[3]=l5;
+    L[4]=ly[4];
+    def Gt=ring(L);
+    kill L,l1,l3,l4,l5,A1,l2;
+    setring Gt;
+    //Gt;
+    setring St;
+    int u_w,i1,i2,i3;
+    poly Gn,pn,pl,plm;
+    list l1,l2,l3,bp,lup,uM1,uM2,lk1,lk2,lk3,py,l3n;
+    ideal J;
+    list Lf = FirstModLift(I,pr,shft,n,in_value,cJ);// generate omega^i, here i=0
+    if(size(Lf)==1)
+    {
+        if(size(Lf[1])>1)
+        {
+            return(Lf[1]);
+        }
+        return(ideal(1));
+    }
+    list LF1 = Lf[4];// the rational function representation for a fixed evaluation point
+    int m_sz = Lf[2];// maximum distinct elements for a homogenizing variable
+    list eta = Lf[3];
+    eta = eta[1..m_sz];// maximum distinct values for a homogenizing variable
+    in_value = Lf[5];
+    list Zr = Lf[6];
+    Lf = Lf[1];
+        /*  generate the last two rational functions to obtain 
+           evaluations of coefficients of auxiliary rational functions
+           at omega^i for i=1,2,... */
+    list M2 = generate_two_lists(I, pr, shft, Lf, eta, m_sz,in, fn, n, in_value,cJ,0);
+    in_value = M2[2];
+    M2 = M2[1];
+    M2 = list(LF1) + M2;
+    M2 = Add_the_list_farey(M2);
+    /*================================================================
+    **** change the current basering ==============================*/
+    setring Gt;
+    list Zr=imap(St,Zr);
+    poly Gn;
+    ideal J;
+    setring St;
+    while(u_w < size(Zr))
+    {
+            u_w++;
+            if(size(Zr[u_w])>1)
+            {
+                setring Gt;
+                Gn = Zr[u_w][1];
+                setring St;
+                l1 = M2[u_w];
+                for(i1=1;i1<=size(l1);i1++)
+                {
+                    for(i2=1;i2<=2;i2++)
+                    {
+                        for(i3=1;i3<=size(l1[i1][i2][1]);i3++)
+                        {
+                            l3 = return_coef_indx(l1[i1][i2],i3);
+                            l3 = l3,lk1;
+                            l3 = SubList(l3);
+                            bp = BerlekampMassey(l3,n);
+                            if(size(bp)==2)
+                            {
+                                if(bp[1]==1)
+                                {
+                                    lup = lk3,list();
+                                }
+                                else
+                                {
+                                    l3 = l3[1..bp[2]];
+                                    pn = SparsepolyInterpolation(bp[1],l3,pr,n); // need changes
+                                    pl = pn+ pl;
+                                    lup = Evaluate_par(pn,shft,n);
+                                    lup = lup,lk3;
+                                }
+                            }
+                            else
+                            {
+                                in = fn+1;
+                                fn = fn+4;
+                                uM1 = generate_two_lists(I, pr, shft, Lf,
+                                               eta, m_sz,in, fn, n,in_value,cJ);
+                                uM1 = Add_the_list_farey(uM1);
+                                l3 = return_coef_indx(uM1[u_w][i1][i2],i3);
+                                if(i3>1)
+                                {
+                                      lk1 = EvaluateatPr(plm, pr, n,in,fn);
+                                      l3 = l3,lk1;
+                                      l3 = SubList(l3);
+                                }
+                                l3n = bp[6];
+                                while(1)
+                                {
+                                    # = bp;
+                                    l3n = l3n + l3;
+                                    bp = BerlekampMassey(l3,n,#);
+                                    if(size(bp)==2)
+                                    {
+                                        l3n = l3n[1..bp[2]];
+                                        pn = SparsepolyInterpolation(bp[1],l3n,pr,n);
+                                        pl = pn + pl;
+                                        lup = Evaluate_par(pn,shft,n);
+                                        lup = lup,lk3;
+                                        break;
+                                    }
+                                    else
+                                    {
+                                        in = fn+1;
+                                        fn = fn+4;
+                                        uM2 = generate_two_lists(I, pr, shft,
+                                           Lf, eta, m_sz,in, fn, n,in_value,cJ);
+                                        uM2 = Add_the_list_farey(uM2);
+                                        uM1 = Add_list_of_list(uM1,uM2,u_w);
+                                        l3 = return_coef_indx(uM2[u_w][i1][i2],i3);
+                                        if(i3>1)
+                                        {
+                                             lk1 = EvaluateatPr(plm, pr, n,in,fn);
+                                             l3 = l3,lk1;
+                                             l3 = SubList(l3);
+                                        }
+                                    }
+                                }
+                                M2 = Add_list_of_list(M2,uM1,u_w);
+                                l1 = M2[u_w];
+                            }
+                            if(i3 < size(l1[i1][i2][1]))
+                            {
+                                lk3 = Add_poly_list(lup);
+                                lk1 = EvaluateatPr(lk3[1], pr, n, 1, fn);
+                                lk3 = delete(lk3,1);
+                            }
+                        }
+                        py[i2]=pl;
+                        pl=0;
+                        lk1 = list();
+                        lk2 = list();
+                        lk3 = list();
+                    }
+                    setring Gt;
+                    list H = imap(St,py);
+                    Gn = Gn + (H[1]/H[2])*Zr[u_w][i1+1];
+                    kill H;
+                    setring St;
+                }
+            }
+            else
+            {
+                setring Gt;
+                Gn = Zr[u_w][1];
+                setring St;
+            }
+            setring Gt;
+            Gn = cleardenom(Gn);
+            J[u_w] = Gn;
+            setring St;
+    }
+    setring Gt;
+    J = normalize_ideal(J); // very important part
+    setring St;
+    if(tmp>0)
+    {
+         return(list(imap(Gt,J), fn));
+    }
+    return(imap(Gt,J));
+}
+
+
+static proc normalize_ideal(ideal J)
+{
+    def Gh = basering;
+    int n,pa;
+    n=nvars(Gh);
+    pa=npars(Gh);
+    list rl=ringlist(Gh);
+    list la=rl[1][2];
+    list m=rl[2];
+    m[(n+1)..(n+pa)]=la[1..pa];
+    rl[2]=m;
+    rl[1]=rl[1][1];
+    rl[3][size(rl[3])+1]=rl[3][size(rl[3])];
+    rl[3][size(rl[3])-1]=list("lp",pa);
+    def Sh=ring(rl);
+    setring Sh;
+    ideal J = imap(Gh,J);
+    J = normalize(J);
+    setring Gh;
+    return(imap(Sh,J));
+}
+////////////////////////////////////////////////////////////////////////
+
+proc vstd(ideal I, list #)
+{
+    int tmp=size(#);
+    intvec opt = option(get);
+    option(redSB);
+    def Gt=basering;
+    def Ht;
+    int n,pa,kr;
+    n=nvars(Gt);
+    pa=npars(Gt);
+    
+    // for prime test only //
+    list rl=ringlist(Gt);
+    list la=rl[1][2];
+    list m=rl[2];
+    m[(n+1)..(n+pa)]=la[1..pa];
+    rl[2]=m;
+    rl[1]=rl[1][1];
+    rl[3][size(rl[3])+1]=rl[3][size(rl[3])];
+    rl[3][size(rl[3])-1]=list("lp",pa);
+    def S_t=ring(rl);
+    I = scalIdeal(I);
+    setring S_t;
+
+    ideal I = imap(Gt,I);
+
+    
+    setring Gt;
+    list L=collect_coeffs(I);
+    I=scalIdeal(I);
+    int n_t,pa_a;
+    ideal fryoutput;
+    n_t=nvars(Gt);
+    pa_a=npars(Gt);
+    list rl_n=ringlist(Gt);
+    
+    list la_n=rl_n[1][2];
+    list m_n=rl_n[2];
+    m_n[(n_t+1)..(n_t+pa_a-1)]=la_n[2..pa_a];
+    rl_n[1][2]=list(la_n[1]);
+    list mt_t=rl_n[1][3][1][1],rl_n[1][3][1][2][1];
+    rl_n[1][3]=list(mt_t);
+    rl_n[2]=m_n;
+    rl_n[3][size(rl_n[3])+1]=rl_n[3][size(rl_n[3])];
+    rl_n[3][size(rl_n[3])-1]=list("lp", pa_a-1);
+    def St_n=ring(rl_n);
+    setring St_n;
+    
+    list L=imap(Gt,L);
+    ideal I=imap(Gt,I);
+    list lc=Testlist_all(L);
+    ideal cI1 = lc[1]+lc[2];
+    list shft = test_the_shift(cI1,n_t-1,pa_a-1);
+    list pr=chose_prime(pa_a-1);
+
+    int p = 536870909;
+    setring S_t;
+
+    int paSS = prime_test(p, I);
+
+    setring St_n;
+    list prm,indices;
+    int in_value = 4;// set initial data to be 4
+    int in =2;// in and fn are initial data for berlkampMasse Algorithm
+    int fn= 5;
+    list modResult;
+
+    if(tmp==1)
+    {
+        in_value = #[1];
+    }
+    
+    if(tmp==2)
+    {
+        fn = #[1];
+        in_value = #[2];
+    }
+    
+    for(int up=1;up<=size(pr);up++)
+    {
+        pr[up] = pr[up]+par(1);
+    }
+    ~;
+    int t=timer;
+    paSS;
+    def F = modpTranstd(I, pr,shft, n, in,fn, in_value, p,cI1,0);
+    timer-t;
+    ~;
+    if(paSS)
+    {
+        prm[1]=p;
+        def F = modpTranstd(I, pr,shft, n, in,fn, in_value, p,cI1,0);
+    }
+    else
+    {
+        while(1)
+        {
+            p = prime(p-1);
+            if(p<2)
+            {
+                ERROR("no more primes");
+            }
+            setring S_t;
+            paSS = prime_test(p,I);
+            setring St_n;
+            if(paSS)
+            {
+                prm[1]=p;
+                def F = modpTranstd(I, pr,shft, n, in,fn, in_value,p,cI1,0);
+                break;
+            }
+        }
+    }
+    modResult[1] = F[1];
+    bigint N = prm[1];
+    bigint bN=1;
+    p = prime(p-1);
+    if(p<2)
+    {
+        ERROR("no more primes");
+    }
+    int Testp;
+    setring S_t;
+    paSS = prime_test(p, I);
+    setring St_n;
+    if(paSS)
+    {
+        Testp = p;
+    }
+    else
+    {
+        while(1)
+        {
+            p = prime(p-1);
+            if(p<2)
+            {
+                ERROR("no more primes");
+            }
+            setring S_t;
+            paSS = prime_test(p,I);
+            setring St_n;
+            if(paSS)
+            {
+                Testp = p;
+                break;
+            }
+        }
+    }
+    
+    if(size(F[1])==1)
+    {
+        if(F[1][1]==1)
+        {
+            setring Gt;
+            return(ideal(1));
+        }
+        setring Gt;
+        return(imap(St_n,modResult)[1][1]);
+    }
+
+    p=Testp;
+    ideal JpTest = modpTranstd(I, pr,shft, n, in, F[2], in_value,p,cI1);
+    int k,i,j;
+    j=-1;
+    int nprm=9;
+    nprm;
+    ideal chiResult, fareyResult;
+    ideal GR;
+    while(1)
+    {
+        j++;
+        if(j>1)
+        {
+            nprm = 2*nprm;
+        }
+        for(i=1;i<=nprm;i++)
+        {
+            p = prime(p-1);
+            setring S_t;
+            if(!(prime_test(p,I)))
+            {
+                p = prime_pass(p,I);
+            }
+            setring St_n;
+            prm = prm + list(p);
+            N = N*p;
+            GR = modpTranstd(I, pr,shft, n, in,F[2], in_value,p,cI1);
+            modResult = modResult + list(GR);
+        }
+        
+        j;
+        "================ modResult over =============";
+        // Delete unlucky primes
+        indices = deleteUnluckyPrimes_std(modResult);
+        for(i = size(indices); i > 0; i--)
+        {
+            modResult = delete(modResult, indices[i]);
+            prm = delete(prm, indices[i]);
+        }
+        j;
+        "================ Unlucky primes, if any, are deleted =============";
+        if (bN == 1)
+        {
+            chiResult = chinrem(modResult, prm);
+        }
+        else 
+        {
+            chiResult = chinrem(list(chiResult)+modResult, list(bN)+prm);
+        }
+        j;
+        "================ the results combined using the CRA 4 Z =============";
+        modResult = list();
+        bN = bN*N;
+        p = prime(prm[size(prm)]-1);
+        prm = list();
+        N = 1;
+        fareyResult = farey(chiResult, bN);
+        setring Gt;
+        fryoutput = imap(St_n,fareyResult);
+        if(!pTest_tran(imap(St_n,JpTest),fryoutput,Testp))
+        {
+            continue;
+        }
+        j;
+        "================ A Test in +ve Char is made =============";
+        if(finalTest_tran(I,fryoutput))
+        {
+            j;
+            "================ Final verfication is done =============";
+            break;
+        }
+        setring St_n;
+    }
+    setring Gt;
+    attrib(fryoutput, "isSB", 1);
+    option(set,opt);
+    "================ now we are done, return the result =============";
+    return(fryoutput);
+}
+
+
+proc modpTranstd(ideal I, list pr, list shft, int n, int in, int fn,
+                 int in_value, int p, ideal cJ,list #)
+{
+    int tmp = size(#);
+    def St_n = basering;
+    list lbr = ringlist(St_n);
+    lbr[1][1] = p;
+    def rp = ring(lbr);
+    setring rp;
+    //ideal cI = imap(St_n, cI1);
+    list shft = imap(St_n, shft);
+    list pr = imap(St_n, pr);
+    ideal I = imap(St_n, I);
+    ideal cJ = imap(St_n, cJ);
+    //char(rp);
+    if(tmp==0)
+    {
+        def Fm = transtd(I, pr,shft, n, in,fn, in_value,cJ);
+    }
+    else
+    {
+        def Fm = transtd(I, pr,shft, n, in,fn, in_value,cJ,#);//1=in
+    }
+    
+    setring St_n;
+    return(imap(rp,Fm));
+    
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc Evaluate_par(poly f,list shft,int n)
+{
+    if(deg(f)==0 or f==0)
+    {
+        return(list(poly(0)));
+    }
+    int sr=size(shft);
+    int k;
+    poly g;
+    for(k=n+1;k<=n+sr;k++)
+    {
+        f=subst(f,var(k),var(n)*var(k) + shft[k-n]);
+    }
+    matrix M = coeffs(f,var(n));
+    list L = M[(nrows(M)-1)..1,1];
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// bigint changed to number 
+static proc EvaluateatPr(poly f, list prm, int n, int in, int st)
+{
+    list L;
+    poly v;
+    int k;
+    for(int j=in;j<=st;j++)
+    {
+        v=subst(f,var(n+1),prm[1]**j);
+        for(k=2;k<=size(prm);k++)
+        {
+            v=subst(v,var(k+n),prm[k]**j);
+        }
+        L= L + list(number(v));
+    }
+    return(L);
+}
+////////////////////////////////////////////////////////////////////////////////
+
+proc Add_poly_list(list lup)
+{
+    if(size(lup[2])==0){return(lup[1]);}
+    else
+    { 
+        list l1 = lup[1];
+        list l2 = lup[2];
+        for(int j=1;j<=size(l1);j++)
+        {
+            l1[j] = l1[j]+l2[j];
+        }
+    }
+    return(l1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc SubList(list L)
+{
+    if(size(L[2])==0){return(L[1]);}
+    else
+    { 
+        list l1 = L[1];
+        list l2 = L[2];
+        for(int j=1;j<=size(l1);j++)
+        {
+            l1[j] = l1[j]-l2[j];
+        }
+    }
+    return(l1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc Add_the_list_farey(list L)
+{
+    list lst,lyt,Yt,lm;
+    int i,j;
+    for(j=1;j<=size(L[1]);j++)
+    { 
+        lst = L[1];
+        if(typeof(lst[j])!="none")
+        {
+            lyt = lst[j];
+            for(i=2;i<=size(L);i++)
+            {
+                lst = L[i];
+                lyt = Add_two_list(lyt,lst[j]);
+            }
+            Yt[j]= lyt;
+            lyt = list();
+        }
+    }
+    return(Yt);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc Add_list_of_list(list l1,list l2, int m)
+{
+    list lst,lyt,Yt,lm;
+    int i,j;
+    for(j=m;j<=size(l1);j++)
+    {
+        if(typeof(l1[j])!="none")
+        {
+            for(i=1;i<=size(l1[j]);i++)
+            {
+                l1[j][i][1] = l1[j][i][1] + l2[j][i][1];
+                l1[j][i][2] = l1[j][i][2] + l2[j][i][2];
+            }
+        }
+    }
+    return(l1);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc Two_list_Demir(list l1, list l2)
+{
+    int im=size(l1);
+    int k,i;
+    list l,m;
+    for(k=1;k<=im;k++)
+    {
+        for(i=1;i<=2;i++)
+        {
+                l[i] = l1[k][i] + l2[k][i];
+        }
+        m[k] = l;
+        l = list();
+    }
+    return(m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc Add_two_list(list l1, list l2)
+{
+    int im=size(l1);
+    int k,i;
+    list l,m;
+    for(k=1;k<=im;k++)
+    {
+        for(i=1;i<=2;i++)
+        {
+            if(typeof(l1[k][i])=="poly")
+            {
+                l[i] = list(l1[k][i]) + list(l2[k][i]);
+            }
+            else
+            {
+                l[i] = l1[k][i] + list(l2[k][i]);
+            }
+        }
+        m[k] = l;
+        l = list();
+    }
+    return(m);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc arrange_list_first(list L)
+{
+    // second step list
+    list T,TT;
+    int j,u,l1,l2;
+    l1=size(L[1]);
+    l2=size(L);
+    for(u=1;u<=l1;u++)
+    {
+        for(j=1;j<=l2;j++)
+        {
+            TT[j]=L[j][u];
+        }
+        T[u]=TT;
+    }
+    return(T);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc Add_the_shift_and_evaluate(ideal J,list pr, list shft, int i,
+                                def us, int n, ideal cI)
+{
+    // default value of i and us is 1
+    // n num of variables
+    int k;
+    number Nm;
+    ideal Ic = cI;
+    ideal Jc=J;
+    for(k=n+1;k<=n+size(pr);k++)
+    {
+         Nm = us*(number(pr[k-n])**i)+shft[k-n];
+         Jc =subst(Jc,var(k),Nm);
+         Ic = subst(Ic, var(k),Nm);
+    }
+    
+    while(size(Ic)!=ncols(Ic))
+    {
+        us = us-1;
+        Ic = cI;
+        Jc = J;
+        for(k=n+1;k<=n+size(pr);k++)
+        {
+            Nm = us*(number(pr[k-n])**i)+shft[k-n];
+            Jc =subst(Jc,var(k),Nm);
+            Ic = subst(Ic, var(k),Nm);
+        }
+    }
+    return(list(Jc,us));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc return_coef_indx(def I, int i)
+{
+    list l;
+    for(int j=1;j<=size(I);j++)
+    {
+        l[j] = leadcoef(I[j][i]);
+    }
+    return(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc return_coef_indx_wrtk(def I, int i, int k)
+{
+    list l;
+    for(int j=1;j<=k;j++)
+    {
+        l[j] = leadcoef(I[j][i]);
+    }
+    return(l);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc reverse_coef(poly f, int i)
+{
+    poly g;
+    for(int j=size(f);j>=1;j--)
+    {
+        g = g + var(i)**(j-1)*leadcoef(f[j]);
+    }
+    return(g);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc rev_coef_new(poly f, int i)
+{
+    // i the variable position
+    matrix M=coeffs(f,var(i));
+    int t=nrows(M);
+    list  L=number(M[1..t,1]);
+    L=L[t..1];
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/*== compute the minimal polynomial of L using Berlekamp/Massey algorithm ===*/
+
+proc BerlekampMassey(list L, int i,list #)
+{
+    /*++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+     * L is stream (sequence) of elements from any field 
+     * i is variable position 
+     * Note that we may not obtain the minimal polynomial because the length of 
+     * the sequence may not be long enough so we need to update it at additional 
+     * sequence this is where we need the optional parameter   +++++++++++++++*/
+    
+    list la,Tr;
+    int s,j,k,n;
+    number De=1;
+    number d;
+    list Z;
+    if(size(#)==0)
+    {
+        n=size(L);
+        poly g(0..n);
+        poly B(0..n);
+        int l(0..n);
+        number D(1..n);
+        B(1)=0;
+        l(1)=0;
+        g(0)=1;
+        for(j=1;j<=n;j++)
+        {
+            s=deg(g(j-1));
+            la=rev_coef_new(g(j-1),i);
+            d=0;
+            for(k=0;k<=s;k++)
+            {
+                d = d + la[k+1]*number(L[j-s+k]);
+            }
+            D(j)=d;
+            if(D(j)==0)
+            {
+                if((2*l(j-1)) < j && j>1)
+                {
+                    return(list(reverse_coef(g(j-1),i),j-1));
+                }
+                g(j)=g(j-1);
+                B(j)=var(i)*B(j-1);
+                l(j)=l(j-1);
+            }
+            else
+            {
+                if(D(j)!=0 && (2*l(j-1)) < j)
+                {
+                    // the degree jump;
+                    B(j)=g(j-1);
+                    g(j)=g(j-1)- (D(j)*var(i)*B(j-1))/De;
+                    l(j)=j-l(j-1);
+                    De=D(j);
+                }
+                else
+                {
+                    if( D(j)!=0 && (2*l(j-1)) >= j)
+                    {
+                        //coeffients are adjusted 
+                        g(j)=g(j-1) - (D(j)*var(i)*B(j-1))/De;
+                        B(j)=var(i)*B(j-1);
+                        l(j)=l(j-1);
+                    }
+                }
+            }
+        }
+        Tr=g(n),B(n),l(n),De,n,L;
+        return(Tr);
+    }
+    else
+    {
+        /*********************************************************************
+         ************  update BerlekampMassey procedure *********************/
+        n=size(L);
+        list M=#[6];
+        int ik=n+#[5];
+        M[#[5]+1..ik]=L[1..n];
+        L=M;
+        poly g(0..ik);
+        poly B(0..ik);
+        int l(0..ik);
+        number D(1..ik);
+        g(#[5])=#[1];
+        B(#[5])=#[2];
+        l(#[5])=#[3];
+        De=#[4];
+        for(j=#[5]+1;j<=ik;j++)
+        {
+            s=deg(g(j-1));
+            la=rev_coef_new(g(j-1),i);
+            d=0;
+            for(k=0;k<=s;k++)
+            {
+                d = d + la[k+1]*number(L[j-s+k]);
+            }
+            D(j)=d;
+            if(D(j)==0)
+            {
+                if((2*l(j-1)) < j && j>1)
+                {    
+                    return(list(reverse_coef (g(j-1),i),j-1));
+                }
+                g(j)=g(j-1);
+                B(j)=var(i)*B(j-1);
+                l(j)=l(j-1);
+            }
+            else
+            {
+                if(D(j)!=0 && (2*l(j-1)) < j)
+                {
+                    B(j)=g(j-1);
+                    g(j)=g(j-1)- (D(j)*var(i)*B(j-1))/De;
+                    l(j)=j-l(j-1);
+                    De=D(j);
+                }
+                else
+                {
+                    if( D(j)!=0 && (2*l(j-1)) >= j)
+                    {
+                        g(j)=g(j-1) - (D(j)*var(i)*B(j-1))/De;
+                        B(j)=var(i)*B(j-1);
+                        l(j)=l(j-1);
+                    }
+                }
+            }
+        }
+        Tr=g(ik),B(ik),l(ik),De,ik,L;
+        return(Tr);
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc monom_valuation(poly B, list L,int n)
+{
+    /* returns monomial(s) of B w.r.t L see Valua_tion()
+     * L is list of primes */
+    int nr=size(L);
+    poly f=1;
+    list l;
+    for(int j=n+1;j<=n+nr;j++)
+    {
+        l = Valua_tion_mod(B,L[j-n]);
+        f=f*var(j)**(l[1]);
+        B = l[2];
+    }
+    return(f);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc Valua_tion_mod(poly B, poly S)
+{
+    // p-adic representation of B returns the maximum exponent
+    // @ this code we consider parameter as polynomial
+    int j=0;
+    poly N,M;
+    M=1;
+    while(1)
+    {
+          j++;
+          M = poly(S)*M;
+          N = denominator(number(division(poly(B),M)[1][1,1]));
+          if(N!=1)
+          {
+              return(list(j-1, B/(M/S)));
+              break;
+          }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc rootsofpoly(poly f,int n)
+{
+    // f must be linearly factored
+    ideal J=factorize(f,1);
+    list L;
+    for(int i=1;i<=ncols(J);i++)
+    {
+         L[i]=number(-1*subst(J[i],var(n),0));
+    }
+    return(L);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc compute_monom_evaluation(list lroot, list lprime,int n)
+{
+    /*
+     * returns list of monomials and matrix whose values are evaluated 
+     * at each monomials w.r.t lprime
+     * number of root(s) is equal to the number of terms that we are looking for
+     */
+    int nr=size(lroot);
+    int i,j;
+    list L;
+    matrix M[nr][nr];
+    for(j=1;j<=nr;j++)
+    {
+        L[j]=monom_valuation(lroot[j],lprime,n);
+        for(i=1;i<=nr;i++)
+        {
+            M[i,j]=lroot[j]**i;
+        }
+    }
+    return(list(L,M));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+static proc SparsepolyInterpolation(poly Br,list La,list lpr,int n)
+{
+    /* n is the nvars() of the basering
+     * Br the minimal polynomial of the sequence La
+     */
+    int na=size(La);
+    
+    // compute the roots of f using factorization algorithm      
+    
+    list Lr=rootsofpoly(Br,n);
+    
+    // compute monomials and then evaluate them at each lpr[i] for all i 
+    
+    list F=compute_monom_evaluation(Lr,lpr,n);//monomials to monom
+    
+    //  compute the coefficients of these monomials          
+    
+    int nr=nrows(F[2]);
+    list la=F[1];// list of monomials
+    matrix T[nr][1]=La[1..nr];
+    matrix V=inverse(F[2]);// compute inverse of the matrix
+    matrix Z=V*T;// the coefficient ci
+    
+    // the main procedure ends here
+    
+    matrix C[1][nr]=la[1..nr];
+    poly g=(C*Z)[1,1];
+    return(g);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+
+proc scalIdeal(ideal I)
+{
+    int t=ncols(I);
+    if(size(I)==0){return(I);}
+    else
+    {
+        for(int i=1;i<=ncols(I);i++)
+        { 
+            I[i]=cleardenom(I[i]);
+        }
+    }
+    return(I);
+}
+
