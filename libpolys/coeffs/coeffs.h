@@ -512,13 +512,16 @@ static FORCE_INLINE BOOLEAN n_GreaterZero(number n, const coeffs r)
 static FORCE_INLINE BOOLEAN n_Greater(number a, number b, const coeffs r)
 { STATISTIC(n_Greater); assume(r != NULL); assume(r->cfGreater!=NULL); return r->cfGreater(a,b,r); }
 
-#ifdef HAVE_RINGS
-static FORCE_INLINE int n_DivComp(number a, number b, const coeffs r)
-{ STATISTIC(n_DivComp); assume(r != NULL); assume(r->cfDivComp!=NULL); return r->cfDivComp (a,b,r); }
-
 /// TRUE iff n has a multiplicative inverse in the given coeff field/ring r
 static FORCE_INLINE BOOLEAN n_IsUnit(number n, const coeffs r)
 { STATISTIC(n_IsUnit); assume(r != NULL); assume(r->cfIsUnit!=NULL); return r->cfIsUnit(n,r); }
+
+static FORCE_INLINE coeffs n_CoeffRingQuot1(number c, const coeffs r)
+{ STATISTIC(n_CoeffRingQuot1); assume(r != NULL); assume(r->cfQuot1 != NULL); return r->cfQuot1(c, r); }
+
+#ifdef HAVE_RINGS
+static FORCE_INLINE int n_DivComp(number a, number b, const coeffs r)
+{ STATISTIC(n_DivComp); assume(r != NULL); assume(r->cfDivComp!=NULL); return r->cfDivComp (a,b,r); }
 
 /// in Z: 1
 /// in Z/kZ (where k is not a prime): largest divisor of n (taken in Z) that
@@ -530,8 +533,6 @@ static FORCE_INLINE BOOLEAN n_IsUnit(number n, const coeffs r)
 static FORCE_INLINE number n_GetUnit(number n, const coeffs r)
 { STATISTIC(n_GetUnit); assume(r != NULL); assume(r->cfGetUnit!=NULL); return r->cfGetUnit(n,r); }
 
-static FORCE_INLINE coeffs n_CoeffRingQuot1(number c, const coeffs r)
-{ STATISTIC(n_CoeffRingQuot1); assume(r != NULL); assume(r->cfQuot1 != NULL); return r->cfQuot1(c, r); }
 #endif
 
 /// a number representing i in the given coeff field/ring r
@@ -732,6 +733,9 @@ static FORCE_INLINE BOOLEAN n_DBTest(number, const char*, const int, const coeff
 { STATISTIC(n_Test);  return TRUE; }
 #endif
 
+/// BOOLEAN n_Test(number a, const coeffs r)
+#define n_Test(a,r)  n_DBTest(a, __FILE__, __LINE__, r)
+
 /// output the coeff description
 static FORCE_INLINE void   n_CoeffWrite(const coeffs r, BOOLEAN details = TRUE)
 { STATISTIC(n_CoeffWrite); assume(r != NULL); assume(r->cfCoeffWrite != NULL); r->cfCoeffWrite(r, details); }
@@ -917,9 +921,6 @@ static FORCE_INLINE BOOLEAN nCoeff_is_Q_algext(const coeffs r)
 /// TRUE iff r represents a transcendental extension field
 static FORCE_INLINE BOOLEAN nCoeff_is_transExt(const coeffs r)
 { assume(r != NULL); return (getCoeffType(r)==n_transExt); }
-
-/// BOOLEAN n_Test(number a, const coeffs r)
-#define n_Test(a,r)  n_DBTest(a, __FILE__, __LINE__, r)
 
 /// Computes the content and (inplace) divides it out on a collection
 /// of numbers

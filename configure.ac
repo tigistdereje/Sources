@@ -1,5 +1,5 @@
-AC_INIT([singular], [4.0.2], [singular@mathematik.uni-kl.de])
-AC_DEFINE([VERSION_DATE],["Feb 2015"],[release date])
+AC_INIT([singular], [4.0.3], [singular@mathematik.uni-kl.de])
+AC_DEFINE([VERSION_DATE],["Jan 2016"],[release date])
 
 _AC_SRCDIRS(["$ac_dir"])
 
@@ -64,7 +64,6 @@ AC_SEARCH_LIBS(sem_wait,[rt pthreads pthread],[],[
   AC_MSG_ERROR([sem_wait not found in rt,pthreads,pthread])
 ])
 
-#AC_CHECK_LIB(pthread,pthread_create)
 AX_PTHREAD([], [
   AC_MSG_ERROR([Pthread library not found. Please set PTHREAD_CFLAGS and PTHREAD_LIBS correctly for your setup])
 ])
@@ -259,8 +258,8 @@ AC_CONFIG_FILES([libsingular-config Singular.pc])
 
 AC_CONFIG_FILES([emacs/Makefile])
 
+AC_CONFIG_FILES([redhat/Makefile])
+AC_CONFIG_FILES([redhat/singular.spec])
 AC_CONFIG_FILES([desktop/Makefile desktop/Singular.desktop desktop/Singular-manual.desktop])
-
-AC_CONFIG_FILES([singular.spec])
 
 AC_OUTPUT

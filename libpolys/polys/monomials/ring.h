@@ -721,11 +721,13 @@ void   rSetSyzComp(int k, const ring r);
 
 // Ring Manipulations
 ring   rAssure_HasComp(const ring r);
+ring   rAssure_SyzOrder(const ring r, BOOLEAN complete);
 ring   rAssure_SyzComp(const ring r, BOOLEAN complete = TRUE);
 
 ring   rAssure_dp_S(const ring r);
 ring   rAssure_dp_C(const ring r);
 ring   rAssure_C_dp(const ring r);
+ring   rAssure_c_dp(const ring r);
 
 /// makes sure that c/C ordering is last ordering
 ring   rAssure_CompLastBlock(const ring r, BOOLEAN complete = TRUE);
@@ -776,10 +778,10 @@ static inline BOOLEAN rOrd_is_Comp_dp(const ring r)
 }
 
 #ifdef RDEBUG
-#define rTest(r)    rDBTest(r, __FILE__, __LINE__)
+#define rTest(r)  rDBTest(r, __FILE__, __LINE__)
 extern BOOLEAN rDBTest(ring r, const char* fn, const int l);
 #else
-#define rTest(r)
+#define rTest(r) (TRUE)
 #endif
 
 ring rModifyRing(ring r, BOOLEAN omit_degree,

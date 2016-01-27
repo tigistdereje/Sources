@@ -7,15 +7,19 @@ endif
 SUBDIRS = resources omalloc xalloc $(USE_FACTORY) \
 libpolys gfanlib IntegerProgramming \
 kernel Singular \
-dox emacs desktop
+dox emacs redhat desktop
 
-EXTRA_DIST = README README.md README.pkg autogen.sh git-version-gen doxy singular.spec.in singular.spec
+EXTRA_DIST = README README.md README.pkg autogen.sh git-version-gen doxy redhat/singular.spec.in GPL2 GPL3 doc/doc.tbz2
 
 bin_SCRIPTS = libsingular-config
 
 dist-hook:
 	$(srcdir)/git-version-gen $(srcdir)/.tarball-git-version > $(distdir)/.tarball-git-version
 
+install-data-local:
+	-cat ${top_srcdir}/doc/doc.tbz2| (cd $(datadir)/singular;tar jxf -)
+	-mkdir $(datadir)/info
+	-mv  $(datadir)/singular/singular.hlp  $(datadir)/info/.
 
 configheaderdir = ${includedir}/singular
 nodist_configheader_HEADERS = singularconfig.h

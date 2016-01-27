@@ -229,22 +229,23 @@ BOOLEAN ntDBTest(number a, const char *f, const int l, const coeffs cf)
       }
     }
 
-    poly gcd = singclap_gcd_r( num, den, ntRing );
-
-    if( !p_IsOne(gcd, ntRing) )
+    if (COM(t)==0)
     {
-      Print("ERROR in %s:%d: 1 != GCD between num. & den. poly\n",f,l);
-      Print("GCD: ");  p_Write(gcd, ntRing);
-      Print("NUM: ");  p_Write(num, ntRing);
-      Print("DEN: ");  p_Write(den, ntRing);
-      return FALSE;
+      poly gcd = singclap_gcd_r( num, den, ntRing );
+      if(gcd!=NULL)
+      {
+        if((gcd!=NULL) && !p_IsOne(gcd, ntRing) )
+        {
+          Print("ERROR in %s:%d: 1 != GCD between num. & den. poly\n",f,l);
+          Print("GCD: ");  p_Write(gcd, ntRing);
+          Print("NUM: ");  p_Write(num, ntRing);
+          Print("DEN: ");  p_Write(den, ntRing);
+          return FALSE;
+        }
+        p_Delete( &gcd, ntRing );
+      }
     }
-
-    p_Delete( &gcd, ntRing );
-
     return TRUE;
-
-
 
     if(p_IsConstant(den, ntRing) && (n_IsOne(pGetCoeff(den), ntCoeffs)))
     {
@@ -1019,6 +1020,30 @@ number ntMult(number a, number b, const coeffs cf)
   return (number)result;
 }
 
+static void ntNormalizeDen(fraction result, const ring R)
+{
+  if ((nCoeff_has_simple_inverse(R->cf))
+  && (result!=NULL)
+  && (DEN(result)!=NULL))
+  {
+    poly n=DEN(result);
+    if (!n_IsOne(pGetCoeff(n),R->cf))
+    {
+      number inv=n_Invers(pGetCoeff(n),R->cf);
+      DEN(result)=p_Mult_nn(n,inv,R);
+      NUM(result)=p_Mult_nn(NUM(result),inv,R);
+      n_Delete(&inv,R->cf);
+      if (p_IsOne(DEN(result), R))
+      {
+        n=DEN(result);
+        DEN(result)=NULL;
+        COM(result) = 0;
+        p_Delete(&n,R);
+      }
+    }
+  }
+}
+
 number ntDiv(number a, number b, const coeffs cf)
 {
   //check_N(a,cf);
@@ -1056,6 +1081,7 @@ number ntDiv(number a, number b, const coeffs cf)
   heuristicGcdCancellation((number)result, cf);
 //  ntTest((number)result);
   //check_N((number)result,cf);
+  ntNormalizeDen(result,ntRing);
   ntTest((number)result);
   return (number)result;
 }
@@ -1312,7 +1338,7 @@ void heuristicGcdCancellation(number a, const coeffs cf)
               p_ExpVectorDiff(h,h,den_f,ntRing);
               pIter(h);
             } while(h!=NULL);
-	    p_ExpVectorDiff(den_f,den_f,den_f,ntRing);
+            p_ExpVectorDiff(den_f,den_f,den_f,ntRing);
             break;
           }
           int i=0;
@@ -1325,6 +1351,14 @@ void heuristicGcdCancellation(number a, const coeffs cf)
         }
       }
     }
+  }
+  if ((DEN(f)!=NULL)
+  && (pNext(DEN(f))==NULL)
+  && (p_LmIsConstantComp(DEN(f),ntRing))
+  && (n_IsOne(pGetCoeff(DEN(f)),ntCoeffs)))
+  {
+     p_Delete(&DEN(f),ntRing);
+     COM(f)=0;
   }
 }
 
@@ -1434,7 +1468,7 @@ void definiteGcdCancellation(number a, const coeffs cf,
   { /* We divide both NUM(f) and DEN(f) by the gcd which is known
        to be != 1. */
     if (p_IsConstant(DEN(f), ntRing) &&
-        n_IsOne(p_GetCoeff(DEN(f), ntRing), ntCoeffs))
+      n_IsOne(p_GetCoeff(DEN(f), ntRing), ntCoeffs))
     {
       /* DEN(f) = 1 needs to be represented by NULL! */
       p_Delete(&DEN(f), ntRing);
@@ -1457,10 +1491,11 @@ void definiteGcdCancellation(number a, const coeffs cf,
       }
     }
   }
-  COM(f) = 0;
   p_Delete(&pGcd, ntRing);
+  COM(f) = 0;
 
   if( DEN(f) != NULL )
+  {
     if( !n_GreaterZero(pGetCoeff(DEN(f)), ntCoeffs) )
     {
       NUM(f) = p_Neg(NUM(f), ntRing);
@@ -1473,6 +1508,7 @@ void definiteGcdCancellation(number a, const coeffs cf,
         DEN (f) = NULL;
       }
     }
+  }
   ntTest(a); // !!!!
 }
 
@@ -1550,6 +1586,7 @@ void ntNormalize (number &a, const coeffs cf)
       DEN((fraction)a)=p_Neg(DEN((fraction)a),ntRing);
     }
   }
+  ntNormalizeDen((fraction)a,ntRing);
   ntTest(a); // !!!!
 }
 
@@ -1752,28 +1789,16 @@ int ntSize(number a, const coeffs cf)
   poly p = NUM(f);
   int noOfTerms = 0;
   int numDegree = 0;
-  while (p != NULL)
+  if (p!=NULL)
   {
-    noOfTerms++;
-    int d = 0;
-    for (int i = 1; i <= rVar(ntRing); i++)
-      d += p_GetExp(p, i, ntRing);
-    if (d > numDegree) numDegree = d;
-    pIter(p);
+    numDegree = p_Totaldegree(p,ntRing);
+    noOfTerms = pLength(p);
   }
   int denDegree = 0;
   if (!DENIS1(f))
   {
-    p = DEN(f);
-    while (p != NULL)
-    {
-      noOfTerms++;
-      int d = 0;
-      for (int i = 1; i <= rVar(ntRing); i++)
-        d += p_GetExp(p, i, ntRing);
-      if (d > denDegree) denDegree = d;
-      pIter(p);
-    }
+    denDegree =  p_Totaldegree(DEN(f),ntRing);
+    noOfTerms += pLength(DEN(f));
   }
   ntTest(a); // !!!!
   return numDegree + denDegree + noOfTerms;
@@ -1831,6 +1856,7 @@ number ntInvers(number a, const coeffs cf)
   //  DEN(result) = NULL;
   //  COM(result) = 0;
   //}
+  ntNormalizeDen(result,ntRing);
   ntTest((number)result); // !!!!
   //check_N((number)result,cf);
   return (number)result;

@@ -13,7 +13,6 @@
 //#include <kernel/pShallowCopyDelete.h>
 #include <coeffs/coeffs.h>
 #include <polys/monomials/ring.h>
-//#include <kernel/p_Procs.h>
 //#include <kernel/GBEngine/kutil.h>
 #include <polys/kbuckets.h>
 
@@ -195,7 +194,7 @@ BOOLEAN kbTest(kBucket_pt bucket)
 /// Creation/Destruction of buckets
 ///
 
-kBucket_pt kBucketCreate(ring bucket_ring)
+kBucket_pt kBucketCreate(const ring bucket_ring)
 {
   assume(bucket_ring != NULL);
   kBucket_pt bucket = (kBucket_pt) omAlloc0Bin(kBucket_bin);
@@ -882,7 +881,6 @@ void kBucket_Plus_mm_Mult_pp(kBucket_pt bucket, poly m, poly p, int l)
       i = pLogLength(l1);
     }
   }
-
   else
   {
     #ifdef USE_COEF_BUCKETS
@@ -900,7 +898,6 @@ void kBucket_Plus_mm_Mult_pp(kBucket_pt bucket, poly m, poly p, int l)
     p_SetCoeff(m,n_Copy(n,r),r);
     #endif
   }
-
 
   while ((bucket->buckets[i] != NULL) && (p1!=NULL))
   {
@@ -978,7 +975,7 @@ void kBucket_Plus_mm_Mult_pp(kBucket_pt bucket, poly m, poly p, int l)
     p_Delete(&bucket->coef[i],r);
 #endif
   bucket->buckets_length[i]=l1;
-  if (i >= bucket->buckets_used)
+  if (i > bucket->buckets_used)
     bucket->buckets_used = i;
   else
     kBucketAdjustBucketsUsed(bucket);

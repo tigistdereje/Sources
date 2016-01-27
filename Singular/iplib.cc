@@ -152,7 +152,17 @@ char * iiProcArgs(char *e,BOOLEAN withParenth)
     args_found=FALSE;
     s=e; // set s to the starting point of the arg
          // and search for the end
-    while(*s==' ') s++; e=s; // skip leading paces
+    // skip leading spaces:
+    loop
+    {
+      if ((*s==' ')||(*s=='\t'))
+        s++;
+      else if ((*s=='\n')&&(*(s+1)==' '))
+        s+=2;
+      else // start of new arg or \0 or )
+        break;
+    }
+    e=s;
     while ((*e!=',')
     &&((par!=0) || (*e!=')'))
     &&(*e!='\0'))
@@ -756,7 +766,9 @@ BOOLEAN iiTryLoadLib(leftv v, const char *id)
     if((LT = type_of_LIB(libname, libnamebuf)) > LT_NOTFOUND)
     {
       char *s=omStrDup(libname);
+      #ifdef HAVE_DYNAMIC_LOADING
       char libnamebuf[256];
+      #endif
 
       if (LT==LT_SINGULAR)
         LoadResult = iiLibCmd(s, FALSE, FALSE,TRUE);

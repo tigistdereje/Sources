@@ -163,18 +163,18 @@ BOOLEAN _pp_Test(poly p, ring lmRing, ring tailRing, int level);
 
 #else // ! PDEBUG
 
-#define pIsMonomOf(p, q)        (TRUE)
-#define pHaveCommonMonoms(p, q) (TRUE)
-#define p_LmCheckIsFromRing(p,r)  do {} while (0)
-#define p_LmCheckPolyRing(p,r)    do {} while (0)
-#define p_CheckIsFromRing(p,r)  do {} while (0)
-#define p_CheckPolyRing(p,r)    do {} while (0)
-#define p_CheckRing(r)          do {} while (0)
-#define P_CheckIf(cond, check)  do {} while (0)
+#define pIsMonomOf(p, q)          (TRUE)
+#define pHaveCommonMonoms(p, q)   (TRUE)
+#define p_LmCheckIsFromRing(p,r)  (TRUE)
+#define p_LmCheckPolyRing(p,r)    (TRUE)
+#define p_CheckIsFromRing(p,r)    (TRUE)
+#define p_CheckPolyRing(p,r)      (TRUE)
+#define p_CheckRing(r)            (TRUE)
+#define P_CheckIf(cond, check)    (TRUE)
 
-#define p_Test(p,r)     do {} while (0)
-#define p_LmTest(p,r)   do {} while (0)
-#define pp_Test(p, lmRing, tailRing) do {} while (0)
+#define p_Test(p,r)               (TRUE)
+#define p_LmTest(p,r)             (TRUE)
+#define pp_Test(p, lmRing, tailRing) (TRUE)
 
 #endif
 
@@ -904,8 +904,10 @@ static inline poly p_Mult_nn(poly p, number n, const ring r)
   if (n_IsOne(n, r->cf))
     return p;
   else if (n_IsZero(n, r->cf))
-    return NULL;
-  else
+  {
+    r->p_Procs->p_Delete(&p, r); // NOTE: without p_Delete - memory leak!
+    return NULL; 
+  } else
     return r->p_Procs->p_Mult_nn(p, n, r);
 }
 
@@ -1582,13 +1584,14 @@ static inline BOOLEAN _p_LmDivisibleByNoComp(poly a, poly b, const ring r)
     }
     while (i>=0);
   }
-#ifdef HAVE_RINGS
+/*#ifdef HAVE_RINGS
   pDivAssume(p_DebugLmDivisibleByNoComp(a, b, r) == n_DivBy(p_GetCoeff(b, r), p_GetCoeff(a, r), r->cf));
   return (!rField_is_Ring(r)) || n_DivBy(p_GetCoeff(b, r), p_GetCoeff(a, r), r->cf);
 #else
+*/
   pDivAssume(p_DebugLmDivisibleByNoComp(a, b, r) == TRUE);
   return TRUE;
-#endif
+//#endif
 }
 
 static inline BOOLEAN _p_LmDivisibleByNoComp(poly a, const ring r_a, poly b, const ring r_b)
@@ -1603,11 +1606,12 @@ static inline BOOLEAN _p_LmDivisibleByNoComp(poly a, const ring r_a, poly b, con
     i--;
   }
   while (i);
-#ifdef HAVE_RINGS
+/*#ifdef HAVE_RINGS
   return n_DivBy(p_GetCoeff(b, r_b), p_GetCoeff(a, r_a), r_a->cf);
 #else
+*/
   return TRUE;
-#endif
+//#endif
 }
 
 #ifdef HAVE_RATGRING
@@ -1623,11 +1627,12 @@ static inline BOOLEAN _p_LmDivisibleByNoCompPart(poly a, const ring r_a, poly b,
     i--;
   }
   while (i>=start);
-#ifdef HAVE_RINGS
+/*#ifdef HAVE_RINGS
   return n_DivBy(p_GetCoeff(b, r_b), p_GetCoeff(a, r_a), r_a->cf);
 #else
+*/
   return TRUE;
-#endif
+//#endif
 }
 static inline BOOLEAN _p_LmDivisibleByPart(poly a, const ring r_a, poly b, const ring r_b,const int start, const int end)
 {

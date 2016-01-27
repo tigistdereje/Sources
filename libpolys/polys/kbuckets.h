@@ -22,7 +22,7 @@ struct ip_sring; typedef struct ip_sring* ring; typedef struct ip_sring const* c
 //////////////////////////////////////////////////////////////////////////
 // Creation/Destruction of buckets
 //
-kBucket_pt kBucketCreate(ring r);
+kBucket_pt kBucketCreate(const ring r);
 // only free memory allocated for bucket
 void kBucketDestroy(kBucket_pt *bucket);
 // frees polys/monomials in bucket and destroys bucket
@@ -192,7 +192,7 @@ public:
 };
 
 #ifndef HAVE_PSEUDO_BUCKETS
-inline void kBucketAdjustBucketsUsed(kBucket_pt bucket)
+static inline void kBucketAdjustBucketsUsed(kBucket_pt bucket)
 {
   while ( bucket->buckets_used > 0 &&
           bucket->buckets[bucket->buckets_used] == NULL)

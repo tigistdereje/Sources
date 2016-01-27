@@ -11,6 +11,7 @@
 #include <factory/factory.h>
 
 #include <misc/sirandom.h>
+#include <misc/prime.h>
 #include <reporter/reporter.h>
 
 #include "rmodulon.h" // ZnmInfo
@@ -943,13 +944,24 @@ number  nlGetUnit (number n, const coeffs r)
 coeffs nlQuot1(number c, const coeffs r)
 {
   long ch = r->cfInt(c, r);
-  mpz_ptr dummy;
-  dummy = (mpz_ptr) omAlloc(sizeof(mpz_t));
-  mpz_init_set_ui(dummy, ch);
-  ZnmInfo info;
-  info.base = dummy;
-  info.exp = (unsigned long) 1;
-  coeffs rr = nInitChar(n_Zn, (void*)&info);
+  int p=IsPrime(ch);
+  coeffs rr=NULL;
+  if ((long)p==ch)
+  {
+    rr = nInitChar(n_Zp,(void*)ch);
+  }
+  #ifdef HAVE_RINGS
+  else
+  {
+    mpz_ptr dummy;
+    dummy = (mpz_ptr) omAlloc(sizeof(mpz_t));
+    mpz_init_set_ui(dummy, ch);
+    ZnmInfo info;
+    info.base = dummy;
+    info.exp = (unsigned long) 1;
+    rr = nInitChar(n_Zn, (void*)&info);
+  }
+  #endif
   return(rr);
 }
 
@@ -2976,8 +2988,6 @@ static char* nlCoeffString(const coeffs r)
   if (r->cfDiv==nlDiv) return omStrDup("0");
   else                 return omStrDup("integer");
 }
-
-#define SSI_BASE 16
 
 static void nlWriteFd(number n,FILE* f, const coeffs)
 {

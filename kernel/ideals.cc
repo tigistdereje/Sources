@@ -244,7 +244,7 @@ ideal idSect (ideal h1,ideal h2)
   j = IDELEMS(first);
 
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring,TRUE); rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring,TRUE); rChangeCurrRing(syz_ring);
   rSetSyzComp(length, syz_ring);
 
   while ((j>0) && (first->m[j-1]==NULL)) j--;
@@ -383,7 +383,7 @@ ideal idMultSect(resolvente arg, int length)
   syzComp = k*maxrk;
 
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring,TRUE); rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring,TRUE); rChangeCurrRing(syz_ring);
   rSetSyzComp(syzComp, syz_ring);
 
   bigmat = idInit(j,(k+1)*maxrk);
@@ -465,14 +465,13 @@ ideal idMultSect(resolvente arg, int length)
 static ideal idPrepare (ideal  h1, tHomog hom, int syzcomp, intvec **w)
 {
   ideal   h2, h3;
-  int     i;
   int     j,k;
   poly    p,q;
 
   if (idIs0(h1)) return NULL;
   k = id_RankFreeModule(h1,currRing);
   h2=idCopy(h1);
-  i = IDELEMS(h2)-1;
+  int i = IDELEMS(h2);
   if (k == 0)
   {
     id_Shift(h2,1,currRing);
@@ -484,7 +483,7 @@ static ideal idPrepare (ideal  h1, tHomog hom, int syzcomp, intvec **w)
     syzcomp = k;
     rSetSyzComp(k,currRing);
   }
-  h2->rank = syzcomp+i+1;
+  h2->rank = syzcomp+i;
 
   //if (hom==testHomog)
   //{
@@ -499,12 +498,11 @@ static ideal idPrepare (ideal  h1, tHomog hom, int syzcomp, intvec **w)
   Print("Prepare::h2: ");
   idPrint(h2);
 
-  for(j=0;j<IDELEMS(h2);j++) pTest(h2->m[j]);
-
+  idTest(h2);
 #endif
 #endif
 
-  for (j=0; j<=i; j++)
+  for (j=0; j<i; j++)
   {
     p = h2->m[j];
     q = pOne();
@@ -542,10 +540,9 @@ static ideal idPrepare (ideal  h1, tHomog hom, int syzcomp, intvec **w)
 #ifdef RDEBUG
   Print("Prepare::Output: ");
   idPrint(h3);
-  for(j=0;j<IDELEMS(h2);j++) pTest(h3->m[j]);
+  idpTest(h3);
 #endif
 #endif
-
 
   idDelete(&h2);
   return h3;
@@ -776,7 +773,7 @@ ideal idLiftStd (ideal  h1, matrix* ma, tHomog hi, ideal * syz)
   if ((k==1) && (!lift3)) si_opt_2 |=Sy_bit(V_IDLIFT);
 
   ring orig_ring = currRing;
-  ring syz_ring = rAssure_SyzComp(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
+  ring syz_ring = rAssure_SyzOrder(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
   rSetSyzComp(k,syz_ring);
 
   ideal s_h1=h1;
@@ -927,6 +924,7 @@ static void idPrepareStd(ideal s_temp, int k)
       pNext(p) = q;
     }
   }
+  s_temp->rank = k+IDELEMS(s_temp);
 }
 
 /*2
@@ -971,7 +969,7 @@ ideal idLift(ideal mod, ideal submod,ideal *rest, BOOLEAN goodShape,
   if (k<submod->rank) { WarnS("rk(submod) > rk(mod) ?");k=submod->rank; }
 
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
   rSetSyzComp(k,syz_ring);
 
   ideal s_mod, s_temp;
@@ -1023,6 +1021,7 @@ ideal idLift(ideal mod, ideal submod,ideal *rest, BOOLEAN goodShape,
         p = pNeg(p);
       }
     }
+    s_temp->rank += (k+comps_to_add);
   }
   ideal s_result = kNF(s_h3,currRing->qideal,s_temp,k);
   s_result->rank = s_h3->rank;
@@ -1332,7 +1331,7 @@ ideal idQuot (ideal  h1, ideal h2, BOOLEAN h1IsStb, BOOLEAN resultIsIdeal)
   hom = (tHomog)idHomModule(s_h4,currRing->qideal,&weights1);
 
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring,TRUE);  rChangeCurrRing(syz_ring);
   rSetSyzComp(kmax-1,syz_ring);
   if (orig_ring!=syz_ring)
   //  s_h4 = idrMoveR_NoSort(s_h4,orig_ring, syz_ring);
@@ -1742,7 +1741,7 @@ ideal idMinors(matrix a, int ar, ideal R)
           MATELEM(tmp,i,j) = MATELEM(a,rowchoise[i-1],colchoise[j-1]);
         }
       }
-      p = mp_DetBareiss(tmp,vcurrRing);
+      p = mp_DetBareiss(tmp,currRing);
       if (p!=NULL)
       {
         if (R!=NULL)
@@ -1844,7 +1843,7 @@ ideal idMinors(matrix a, int ar, ideal R)
 
   id_Delete((ideal *)&b, tmpR);
 
-  if (R!=NULL) idDelete(&R);
+  if (R!=NULL) id_Delete(&R,tmpR);
 
   idSkipZeroes(result);
   rChangeCurrRing(origR);
@@ -1982,7 +1981,7 @@ matrix idDiffOp(ideal I, ideal J,BOOLEAN multiply)
 static ideal idHandleIdealOp(ideal arg,int syzcomp,int isIdeal=FALSE)
 {
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring, TRUE); rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring, TRUE); rChangeCurrRing(syz_ring);
   rSetSyzComp(length, syz_ring);
 
   ideal s_temp;
@@ -2106,7 +2105,7 @@ ideal idModulo (ideal h2,ideal h1, tHomog hom, intvec ** w)
   }
 
   ring orig_ring=currRing;
-  ring syz_ring=rAssure_SyzComp(orig_ring, TRUE); rChangeCurrRing(syz_ring);
+  ring syz_ring=rAssure_SyzOrder(orig_ring, TRUE); rChangeCurrRing(syz_ring);
   // we can use OPT_RETURN_SB only, if syz_ring==orig_ring,
   // therefore we disable OPT_RETURN_SB for modulo:
   // (see tr. #701)

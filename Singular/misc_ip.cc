@@ -26,6 +26,7 @@
 #include <coeffs/OPAE.h>
 #include <coeffs/OPAEQ.h>
 #include <coeffs/OPAEp.h>
+#include <coeffs/flintcf_Q.h>
 
 #include <polys/ext_fields/algext.h>
 #include <polys/ext_fields/transext.h>
@@ -571,8 +572,8 @@ struct soptionStruct verboseStruct[]=
   {"coefStrat",Sy_bit(V_COEFSTRAT), ~Sy_bit(V_COEFSTRAT)},
   {"qringNF",  Sy_bit(V_QRING),     ~Sy_bit(V_QRING)},
   {"warn",     Sy_bit(V_ALLWARN),   ~Sy_bit(V_ALLWARN)},
-  {"interedSyz",Sy_bit(V_INTERSECT_SYZ), ~Sy_bit(V_INTERSECT_SYZ)},
-  {"interedElim",Sy_bit(V_INTERSECT_ELIM), ~Sy_bit(V_INTERSECT_ELIM)},
+  {"intersectSyz",Sy_bit(V_INTERSECT_SYZ), ~Sy_bit(V_INTERSECT_SYZ)},
+  {"intersectElim",Sy_bit(V_INTERSECT_ELIM), ~Sy_bit(V_INTERSECT_ELIM)},
 /*special for "none" and also end marker for showOption:*/
   {"ne",         0,          0 }
 };
@@ -1079,7 +1080,7 @@ void m2_end(int i)
     if (File_Profiling!=NULL) { fclose(File_Profiling); File_Profiling=NULL; }
     m2_end_called = TRUE;
 #ifdef HAVE_SIMPLEIPC
-    for (int j = SIPC_MAX_SEMAPHORES; j >= 0; j--)
+    for (int j = SIPC_MAX_SEMAPHORES-1; j >= 0; j--)
     {
       if (semaphore[j] != NULL)
       {
@@ -1307,6 +1308,14 @@ void siInit(char *name)
     {
       iiAddCproc("kernel","pAE",FALSE,ii_pAE_init);
     }
+    #ifdef HAVE_FLINT
+    t=nRegister(n_unknown,flintQ_InitChar);
+    if (t!=n_unknown)
+    {
+      h=enterid(omStrDup("flint_poly_Q"),0/*level*/, CRING_CMD,&(basePack->idroot),FALSE /*init*/,FALSE /*search*/);
+      IDDATA(h)=(char*)nInitChar(t,NULL);
+    }
+    #endif
   }
 #endif
 // setting routines for PLURAL QRINGS:

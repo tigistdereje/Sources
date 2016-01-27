@@ -61,8 +61,6 @@ const char *  Tok2Cmdname(int i);
 const char *  iiTwoOps(int t);
 int           iiOpsTwoChar(const char *s);
 
-int     IsPrime(int i);
-
 BOOLEAN iiWRITE(leftv res,leftv exprlist);
 BOOLEAN iiExport(leftv v, int toLev);
 BOOLEAN iiExport(leftv v, int toLev, package pack);
@@ -217,7 +215,7 @@ void checkall();
 #endif
 
 void rSetHdl(idhdl h);
-ring rInit(sleftv* pn, sleftv* rv, sleftv* ord);
+ring rInit(leftv pn, leftv rv, leftv ord);
 idhdl  rDefault(const char *s);
 
 idhdl rSimpleFindHdl(ring r, idhdl root, idhdl n=NULL);
@@ -294,5 +292,8 @@ BOOLEAN iiCheckTypes(leftv args,/// < [in] argument list (may be NULL)
 
 BOOLEAN iiBranchTo(leftv r, leftv args);
 
+#ifdef SINGULAR_4_1
+BOOLEAN rDecompose_CF(leftv res,const coeffs C);
+#endif
 #endif
 

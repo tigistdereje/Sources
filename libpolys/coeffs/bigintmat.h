@@ -1,6 +1,25 @@
 /****************************************
 *  Computer Algebra System SINGULAR     *
 ****************************************/
+/*
+* ABSTRACT: class bigintmat: matrices of number
+*
+* Matrices are stored as 1-dim c-arrays but interpreted 2-dim as matrices.
+* Both modes of addressing are supported, note however, that the 1-dim
+* adressing starts at 0, the 2-dim at 1.
+*
+* Matrices are meant to represent column modules, thus the default
+* operations are always by column.
+*
+* While basic operations are supported over any ring (coeff), some more
+* advanced ones require more special rings: eg. echelon forms, solving
+* of linear equations is only effective over principal ideal or even
+* Euclidean rings.
+*
+* Be careful with the get/set/view/rawset functions to understand which
+* arguments are copied/ deleted or only assigned.
+*/
+
 #ifndef BIGINTMAT_H
 #define BIGINTMAT_H
 
@@ -283,11 +302,13 @@ class bigintmat
     void hnf(); ///< transforms INPLACE to HNF
     void howell(); ///<dito, but Howell form (only different for zero-divsors)
     void swapMatrix(bigintmat * a);
+    #ifdef HAVE_RINGS
     bigintmat * modhnf(number p, coeffs c); ///< computes HNF(this | p*I)
+    #endif
     bigintmat * modgauss(number p, coeffs c);
     void skaldiv(number b); ///< Macht Ganzzahldivision aller Matrixeinträge mit b
     void colskaldiv(int j, number b); ///< Macht Ganzzahldivision aller j-ten Spalteneinträge mit b
-    void mod(number p, coeffs c); ///< Reduziert komplette Matrix modulo p
+    void mod(number p); ///< Reduziert komplette Matrix modulo p
     bigintmat* inpmod(number p, coeffs c); ///< Liefert Kopie der Matrix zurück, allerdings im Ring Z modulo p
     number content(); ///<the content, the gcd of all entries. Only makes sense for Euclidean rings (or possibly constructive PIR)
     void simplifyContentDen(number *den); ///< ensures that Gcd(den, content)=1
