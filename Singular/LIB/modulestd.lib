@@ -819,7 +819,7 @@ proc syz_nf(def I, list #)
      module sy;
      module N = transpose(I),freemodule(ncols(I));
      N= transpose(N);
-     matrix M = nfmodStd(N);
+     matrix M = modStd(N);// nfmodStd
      i1 = ncols(M);
      i2 = nrows(M);
      i_I = ncols(I);
